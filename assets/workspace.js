@@ -82,14 +82,24 @@ function status(p){ return (MSTATS[p.tm_id]||{}).status||null; }
 // are counted separately rather than shown as one "caps" number. A bare country
 // name means a senior side; anything with U-nn or Olympic is youth.
 const isYouth=team=>/U-?\d\d|Olympic/i.test(team||"");
+// A side we could not name is NOT evidence of a senior cap. isYouth() tests the
+// name, so a blank one failed the youth test and was counted as senior: Haissem
+// Hassan read 22/0 because 16 France U17/U18 appearances had no name in the club
+// map, and 6 real Egypt caps plus 16 unnamed youth games rendered as 22 senior.
+// That is the worst direction for this number to be wrong in — it says a
+// selectable player is cap-tied.
+const isSenior=team=>!!(team||"").trim()&&!isYouth(team);
 function caps(p){
   const g=(MSTATS[p.tm_id]||{}).natl||[];
   // Appearances, not call-ups: sitting on the bench for a senior side does not
   // cap-tie anyone, and counting it would overstate the one number that matters.
   const played=g.filter(x=>x.part==="P");
   return {
-    senior:played.filter(x=>!isYouth(x.team)).length,
+    senior:played.filter(x=>isSenior(x.team)).length,
     youth: played.filter(x=>isYouth(x.team)).length,
+    // Named neither way. Shown rather than silently dropped, so a gap in the
+    // club-name map reads as "unresolved" instead of quietly inflating a count.
+    unknown:played.filter(x=>!(x.team||"").trim()).length,
     total: g.length,
     teams:[...new Set(g.map(x=>x.team).filter(Boolean))],
   };
@@ -168,7 +178,7 @@ function capsCell(p){
   // would flag a capped Egypt international as a problem, when he is the
   // opposite — the one player already committed.
   const g=(MSTATS[p.tm_id]||{}).natl||[];
-  const seniorTeams=[...new Set(g.filter(x=>x.part==="P"&&!isYouth(x.team)).map(x=>x.team))];
+  const seniorTeams=[...new Set(g.filter(x=>x.part==="P"&&isSenior(x.team)).map(x=>x.team))];
   const forEgypt=seniorTeams.length&&seniorTeams.every(t=>/^egypt/i.test(t||""));
   const cls=!c.senior?"z":forEgypt?"eg":"sr";
   const tip=c.teams.join(", ")
@@ -337,9 +347,14 @@ function natBlock(p){
   const c=caps(p);
   const seniorTeams=(MSTATS[p.tm_id]||{}).natl
     ?[...new Set(((MSTATS[p.tm_id]||{}).natl||[])
-       .filter(x=>x.part==="P"&&!isYouth(x.team)).map(x=>x.team))]:[];
+       .filter(x=>x.part==="P"&&isSenior(x.team)).map(x=>x.team))]:[];
   const forEgypt=seniorTeams.length&&seniorTeams.every(t=>/^egypt/i.test(t||""));
-  const verdict=!c.senior
+  // "No senior appearances" is a clearance, so it must not be issued over data we
+  // could not read. If some sides are unnamed, say so instead of implying a check
+  // that did not happen.
+  const verdict=!c.senior&&c.unknown
+    ? `<b>${c.unknown} appearance${c.unknown===1?"":"s"} for an unnamed side</b> — not yet resolved to a senior or youth team, so eligibility is unconfirmed.`
+    :!c.senior
     ? `<b class="ok">No senior appearances</b> — youth caps do not cap-tie, so he can still be selected.`
     : forEgypt
       ? `<b class="ok">${c.senior} senior cap${c.senior===1?"":"s"} for Egypt</b> — already committed, and playing.`
