@@ -9,7 +9,10 @@ const initials=n=>(n||"?").split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpper
 const num=v=>{const n=parseInt(v,10);return isNaN(n)?0:n;};
 
 /* ---------- state ---------- */
-const S={view:"roster",q:"",sort:"name",dir:1,sel:null,
+// fxsort is separate from sort: the roster and the fixtures list answer different
+// questions, and carrying one sort across both meant opening Fixtures showed them
+// alphabetically when the only useful order is who plays soonest.
+const S={view:"roster",q:"",sort:"name",dir:1,fxsort:"date",fxdir:1,sel:null,
          f:{track:new Set(),region:new Set(),club:new Set(),caps:new Set(),pos:new Set(),age:new Set(),form:new Set()}};
 // A player between clubs is available now and needs no fee — the single most
 // actionable state in the dossier, and previously only findable by searching the
@@ -461,13 +464,31 @@ function drawNav(){
 // they play on Saturday, not that he is picked — so the squad strip sits beside
 // it. That pairing is the whole point: a next fixture without recent squad status
 // tells a scout nothing about whether to watch it.
+// "Aug 15, 2026" sorts as text into April-first nonsense, so parse it. Date is
+// the only sort this view is really for: a scout plans a week, and the question
+// is "who plays next", not "who is called A".
+const FXKEY={
+  date:p=>{const d=Date.parse((NEXTM[p.tm_id]||{}).date||"");return isNaN(d)?8.64e15:d;},
+  name:p=>(p.name||"").toLowerCase(),
+  club:p=>(p.club||"").toLowerCase(),
+  opp: p=>((NEXTM[p.tm_id]||{}).opp||"").toLowerCase(),
+  form:p=>{const s=status(p);return s?s.played*10-s.out:-99;},
+};
 function drawFixtures(){
-  const list=rows().filter(p=>NEXTM[p.tm_id]);
+  let list=rows().filter(p=>NEXTM[p.tm_id]);
   $("count").innerHTML=`${list.length}<small>with a fixture</small>`;
   if(!list.length){
     $("body").innerHTML=`<div class="empty"><b>No upcoming fixtures</b>Leagues publish 26/27 dates at different times, so this fills in through pre-season.</div>`;
     return;
   }
+  // Default to soonest first. rows() has already sorted by the roster's key,
+  // which is meaningless here.
+  const fk=FXKEY[S.fxsort]||FXKEY.date;
+  list=list.slice().sort((a,b)=>{
+    const ka=fk(a),kb=fk(b);
+    if(ka<kb)return -S.fxdir; if(ka>kb)return S.fxdir;
+    return (a.name||"").localeCompare(b.name||"");
+  });
   const body=list.map(p=>{
     const f=NEXTM[p.tm_id], m=MSTATS[p.tm_id]||{};
     const crest=CRESTS[f.oid]?`<img class="cc" src="${esc(CRESTS[f.oid])}" alt="" loading="lazy">`:"";
@@ -485,17 +506,48 @@ function drawFixtures(){
       <td class="hide-s">${strip}</td>
       <td class="hide-s">${g?`<span class="sig ${g[0]}">${g[1]}</span>`:`<span class="nostrip">—</span>`}</td></tr>`;
   }).join("");
-  $("body").innerHTML=`<table class="grid"><thead><tr>
-    <th>Player</th><th class="hide-s">Kick-off</th><th>Opponent</th>
-    <th class="hide-s">Last 6</th><th class="hide-s">Signal</th></tr></thead><tbody>${body}</tbody></table>`;
+  // No Club column: the player cell already carries it as a subtitle, and a
+  // second copy would cost a column on a view whose job is dates.
+  const FXCOLS=[["name","Player",""],["date","Kick-off","hide-s"],["opp","Opponent",""],
+                ["form","Last 6","hide-s"]];
+  const head=FXCOLS.map(([k,label,cls])=>{
+    const on=S.fxsort===k;
+    return `<th class="${cls}${on?" sorted":""}" data-fx="${k}">${esc(label)}<span class="ar">${on?(S.fxdir>0?"▲":"▼"):"▲"}</span></th>`;
+  }).join("");
+  $("body").innerHTML=`<table class="grid"><thead><tr>${head}<th class="hide-s">Signal</th></tr></thead><tbody>${body}</tbody></table>`;
+  $("body").querySelectorAll("th[data-fx]").forEach(th=>th.onclick=()=>{
+    const k=th.dataset.fx;
+    // Dates and text both read best ascending -- soonest first, A to Z. Form is
+    // the one where "best first" means descending.
+    if(S.fxsort===k)S.fxdir=-S.fxdir; else {S.fxsort=k;S.fxdir=k==="form"?-1:1;}
+    drawFixtures();
+  });
   $("body").querySelectorAll("tr[data-id]").forEach(tr=>tr.onclick=()=>openPanel(tr.dataset.id));
 }
 
 /* ---------- view: national teams ---------- */
-// Grouped by the side, not by the player, because the question this answers is
-// "who is in which system" — an Egypt U20 list is a squad, a France U17 list is a
-// warning. Senior sides for another country come first: those are the players
-// whose eligibility is closing.
+// ONE ROW PER PLAYER, grouped by what his caps mean for eligibility.
+//
+// This was grouped by side, and it did not survive real data. A player appears
+// for every team he has ever played for -- Salah has five, Ahmed Hegazy five --
+// so 71 capped players rendered as 142 rows across 30 groups, the same face over
+// and over. Reading it, you could not answer the only question the tab exists
+// for: can Egypt still call him?
+//
+// Under Article 9 that question has exactly three answers, and they are about the
+// player, not the side. Every team he has played for is still shown, as badges on
+// his row, so nothing is lost -- it is just no longer the organising principle.
+const NATBUCKETS=[
+  ["tied", "Cap-tied elsewhere", "A senior appearance for another country. Under FIFA Article 9 he can no longer switch."],
+  ["egypt","Senior caps for Egypt", "Already committed and playing. These are the successes, not the targets."],
+  ["open", "Youth caps only — still selectable", "Youth appearances never cap-tie. Every one of these players remains available to Egypt."],
+];
+function natBucket(p){
+  const played=((MSTATS[p.tm_id]||{}).natl||[]).filter(x=>x.part==="P");
+  const snr=[...new Set(played.filter(x=>isSenior(x.team)).map(x=>x.team))];
+  if(!snr.length)return "open";
+  return snr.every(t=>/^egypt/i.test(t))?"egypt":"tied";
+}
 function drawNational(){
   const list=rows().filter(p=>((MSTATS[p.tm_id]||{}).natl||[]).length);
   $("count").innerHTML=`${list.length}<small>with caps</small>`;
@@ -503,37 +555,36 @@ function drawNational(){
     $("body").innerHTML=`<div class="empty"><b>Nobody matches</b>No player in this filter has a national-team appearance.</div>`;
     return;
   }
-  const by=new Map();
-  list.forEach(p=>{
-    const seen=new Set();
-    ((MSTATS[p.tm_id]||{}).natl||[]).filter(x=>x.part==="P").forEach(x=>{
-      const t=(x.team||"").trim(); if(!t||seen.has(t))return;
-      seen.add(t);
-      if(!by.has(t))by.set(t,[]);
-      by.get(t).push(p);
-    });
-  });
-  // Senior non-Egypt first (eligibility at risk), then senior Egypt, then youth.
-  const rank=t=>isYouth(t)?2:/^egypt/i.test(t)?1:0;
-  const groups=[...by.entries()].sort((a,b)=>
-    rank(a[0])-rank(b[0])||b[1].length-a[1].length||a[0].localeCompare(b[0]));
-
-  $("body").innerHTML=groups.map(([team,ps])=>{
-    const youth=isYouth(team), egy=/^egypt/i.test(team);
-    const note=youth?"youth — does not cap-tie":egy?"senior — committed to Egypt":"senior — cap-tied under Article 9";
-    const flag=NATIDS[team]&&CRESTS[NATIDS[team]]
-      ?`<img class="cc" src="${esc(CRESTS[NATIDS[team]])}" alt="" loading="lazy">`:"";
+  // Every side he has played for, senior first, as badges. This is what the old
+  // grouping conveyed; carrying it on the row costs one line and keeps the page
+  // one row per player.
+  const sides=p=>{
+    const played=((MSTATS[p.tm_id]||{}).natl||[]).filter(x=>x.part==="P");
+    const by=new Map();
+    played.forEach(x=>{const t=(x.team||"").trim();if(!t)return;by.set(t,(by.get(t)||0)+1);});
+    return [...by.entries()]
+      .sort((a,b)=>(isYouth(a[0])?1:0)-(isYouth(b[0])?1:0)||b[1]-a[1])
+      .map(([t,n])=>{
+        const flag=NATIDS[t]&&CRESTS[NATIDS[t]]
+          ?`<img class="cc" src="${esc(CRESTS[NATIDS[t]])}" alt="" loading="lazy">`:"";
+        return `<span class="side ${isYouth(t)?"y":/^egypt/i.test(t)?"eg":"sr"}" title="${esc(t)} — ${n} appearance${n===1?"":"s"}">${flag}${esc(t)}<i>${n}</i></span>`;
+      }).join("");
+  };
+  $("body").innerHTML=NATBUCKETS.map(([key,label,note])=>{
+    const g=list.filter(p=>natBucket(p)===key);
+    if(!g.length)return "";
+    g.sort((a,b)=>caps(b).senior-caps(a).senior||(a.name||"").localeCompare(b.name||""));
     return `<div class="ntgrp">
-      <div class="ntgh"><b class="${youth?"y":egy?"eg":"sr"}">${flag}${esc(team)}</b>
-        <span>${ps.length} player${ps.length===1?"":"s"} · ${esc(note)}</span></div>
-      <table class="grid"><tbody>${ps.map(p=>{
-        const c=caps(p);
-        return `<tr data-id="${esc(p.tm_id)}">
-          <td><span class="who">${p.photo?`<img class="face" src="${esc(p.photo)}" alt="" loading="lazy">`
-            :`<span class="face ini">${esc(initials(p.name))}</span>`}<span class="nm"><b>${esc(p.name)}</b>
-            <span>${esc(p.position||"")} · ${esc(p.club||"")}</span></span></span></td>
-          <td class="r num hide-s">${esc(p.age||"—")}</td>
-          <td class="r">${capsCell(p)}</td></tr>`;}).join("")}</tbody></table></div>`;
+      <div class="ntgh"><b class="${key==="tied"?"sr":key==="egypt"?"eg":"y"}">${esc(label)}</b>
+        <span>${g.length} player${g.length===1?"":"s"}</span></div>
+      <p class="ntnote">${esc(note)}</p>
+      <table class="grid"><tbody>${g.map(p=>`<tr data-id="${esc(p.tm_id)}">
+        <td><span class="who">${p.photo?`<img class="face" src="${esc(p.photo)}" alt="" loading="lazy">`
+          :`<span class="face ini">${esc(initials(p.name))}</span>`}<span class="nm"><b>${esc(p.name)}</b>
+          <span>${esc(p.position||"")} · ${esc(p.club||"")}</span></span></span></td>
+        <td class="r num hide-s">${esc(p.age||"—")}</td>
+        <td class="sides hide-s">${sides(p)}</td>
+        <td class="r">${capsCell(p)}</td></tr>`).join("")}</tbody></table></div>`;
   }).join("");
   $("body").querySelectorAll("tr[data-id]").forEach(tr=>tr.onclick=()=>openPanel(tr.dataset.id));
 }

@@ -177,6 +177,21 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;min-width:940px}
 .strip i.P{background:var(--up)} .strip i.B{background:var(--warn)}
 .strip i.O{background:var(--line-2)}
 
+/* National teams — every side a player has appeared for, on his own row. The
+   view groups by what his caps MEAN (cap-tied / committed / still open), so the
+   sides themselves become evidence rather than headings. */
+.ntnote{font-size:11.5px;color:var(--mut);margin:0 0 10px;max-width:70ch}
+.sides{display:flex;flex-wrap:wrap;gap:5px}
+.side{display:inline-flex;align-items:center;gap:4px;font:700 10px/1 var(--sans);
+  padding:4px 7px;border-radius:5px;background:var(--line);color:var(--ink-2);white-space:nowrap}
+.side .cc{width:13px;height:13px}
+.side i{font-style:normal;font-weight:800;opacity:.65;font-variant-numeric:tabular-nums}
+/* Senior for another country is the one that ends eligibility, so it is the one
+   that gets the colour. Youth stays neutral: under Article 9 it changes nothing. */
+.side.sr{background:rgba(210,30,60,.14);color:var(--red-soft)}
+.side.eg{background:rgba(46,157,90,.15);color:var(--up)}
+:root[data-theme="light"] .side.sr{color:var(--red)}
+
 /* Scouting mode — the strip is the content here, not a column, so the legend
    that explains its colours has to lead the view. Nothing else on the page
    says what green, amber and grey mean. */
