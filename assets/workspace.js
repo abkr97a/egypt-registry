@@ -502,7 +502,8 @@ function closePanel(){
 // tabs. The nav must never restate a filter, or the two can disagree.
 function drawNav(){
   const n=DATA.length;
-  const withFix=DATA.filter(p=>NEXTM[p.tm_id]).length;
+  // Same rule the view applies, or the tab promises a row it will not draw.
+  const withFix=DATA.filter(p=>NEXTM[p.tm_id]&&!isFree(p)).length;
   const withMatch=DATA.filter(p=>{const s=status(p);return s&&s.n;}).length;
   const withNat=DATA.filter(p=>((MSTATS[p.tm_id]||{}).natl||[]).length).length;
   // Four views, not six. Dual and Egypt-only were tabs AND a sidebar facet -- the
@@ -548,7 +549,12 @@ const FXKEY={
   form:p=>{const s=status(p);return s?s.played*10-s.out:-99;},
 };
 function drawFixtures(){
-  let list=rows().filter(p=>NEXTM[p.tm_id]);
+  // A free agent has no next match. The fixture stored against him belongs to
+  // the club he LEFT -- Adam Tolba was listed as away at Holzheimer SG on 15 Aug
+  // while being a free agent, which is his old side's fixture and tells a scout
+  // nothing about him. isFree, not club_id 515, because the placeholder is only
+  // one of the ways TM renders clublessness.
+  let list=rows().filter(p=>NEXTM[p.tm_id]&&!isFree(p));
   $("count").innerHTML=`${list.length}<small>with a fixture</small>`;
   if(!list.length){
     $("body").innerHTML=`<div class="empty"><b>No upcoming fixtures</b>Leagues publish 26/27 dates at different times, so this fills in through pre-season.</div>`;
