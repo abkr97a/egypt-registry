@@ -45,6 +45,12 @@ function homeCountry(p){
     || (p.citizenship||"").split("/").map(s=>s.trim()).find(c=>c&&c!=="Egypt") || "";
 }
 function regionOf(p){
+  // A free agent has no club and therefore no country, so he belongs to no
+  // region. "Unclassified" was the honest label for the data and a useless one
+  // for a reader — it described three players with no club, not three countries
+  // nobody had mapped. They are filed under Club status instead, where the fact
+  // that matters about them already lives.
+  if(isFree(p))return "free";
   const c=homeCountry(p);
   if(GULF.has(c))return "gulf";
   if(EU.has(c))return "eu";
@@ -234,22 +240,33 @@ function drawTable(){
 /* ---------- render: filters ---------- */
 function facet(title,group,opts){
   const f=S.f[group];
+  let shown=0;
   const body=opts.map(([val,label])=>{
     const n=DATA.filter(p=>passes(p,group)&&({
       track:x=>x.track===val, region:x=>regionOf(x)===val,
       club:x=>(isFree(x)?"free":"signed")===val, caps:x=>capBand(x)===val,
       pos:x=>posOf(x)===val, age:x=>ageBand(x)===val, form:x=>formBand(x)===val,
     })[group](p)).length;
+    // Hide an option nobody matches, unless it is ticked — a checked box that
+    // vanished would look like the filter had broken. An empty row is a dead
+    // control that costs a reader a moment every time they scan the sidebar.
+    if(!n&&!f.has(val))return "";
+    shown++;
     return `<label class="opt"><input type="checkbox" data-g="${group}" value="${esc(val)}"${f.has(val)?" checked":""}>
       ${esc(label)}<span class="n">${n}</span></label>`;
   }).join("");
+  if(!shown)return "";
   return `<div class="fgroup"><div class="h">${esc(title)}</div>${body}</div>`;
 }
 function drawFilters(){
   $("filters").innerHTML=
     facet("Track","track",[["dual","Dual nationality"],["single","Egyptian only"]])
+   // "other" stays in the list but only appears when it has members — a country
+   // the crawl reaches that no region names is a bug worth seeing, not a
+   // permanent empty row.
    +facet("Region","region",[["eu","Europe"],["gulf","Gulf & Middle East"],["afr","Africa"],
-                             ["amer","Americas"],["asia","Asia & Oceania"],["other","Unclassified"]])
+                             ["amer","Americas"],["asia","Asia & Oceania"],["free","No club"],
+                             ["other","Region not mapped"]])
    +facet("Club status","club",[["signed","At a club"],["free","Free agent"]])
    +facet("International","caps",[["senior","Senior caps"],["youth","Youth only"],["none","Never capped"]])
    +facet("Position","pos",POS)
