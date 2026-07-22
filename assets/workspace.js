@@ -10,11 +10,12 @@ const num=v=>{const n=parseInt(v,10);return isNaN(n)?0:n;};
 
 /* ---------- state ---------- */
 const S={view:"roster",q:"",sort:"name",dir:1,sel:null,
-         f:{track:new Set(),region:new Set(),club:new Set(),pos:new Set(),age:new Set(),form:new Set()}};
+         f:{track:new Set(),region:new Set(),club:new Set(),caps:new Set(),pos:new Set(),age:new Set(),form:new Set()}};
 // A player between clubs is available now and needs no fee — the single most
 // actionable state in the dossier, and previously only findable by searching the
 // words "free agent".
 const isFree=p=>/free agent|without club/i.test(p.club||"");
+const capBand=p=>{const c=caps(p);return c.senior?"senior":c.youth?"youth":"none";};
 
 /* ---------- derived ---------- */
 const GULF=new Set(["Qatar","United Arab Emirates","Saudi Arabia","Kuwait","Bahrain","Oman","Jordan","Iraq",
@@ -70,6 +71,23 @@ function ageBand(p){
   return "24";
 }
 function status(p){ return (MSTATS[p.tm_id]||{}).status||null; }
+
+// Senior versus youth is the distinction that decides eligibility, so the two
+// are counted separately rather than shown as one "caps" number. A bare country
+// name means a senior side; anything with U-nn or Olympic is youth.
+const isYouth=team=>/U-?\d\d|Olympic/i.test(team||"");
+function caps(p){
+  const g=(MSTATS[p.tm_id]||{}).natl||[];
+  // Appearances, not call-ups: sitting on the bench for a senior side does not
+  // cap-tie anyone, and counting it would overstate the one number that matters.
+  const played=g.filter(x=>x.part==="P");
+  return {
+    senior:played.filter(x=>!isYouth(x.team)).length,
+    youth: played.filter(x=>isYouth(x.team)).length,
+    total: g.length,
+    teams:[...new Set(g.map(x=>x.team).filter(Boolean))],
+  };
+}
 function signal(p){
   const s=status(p);
   if(!s||!s.n)return null;
@@ -98,6 +116,7 @@ function passes(p,skip){
   if(skip!=="track"&&f.track.size&&!f.track.has(p.track))return false;
   if(skip!=="region"&&f.region.size&&!f.region.has(regionOf(p)))return false;
   if(skip!=="club"&&f.club.size&&!f.club.has(isFree(p)?"free":"signed"))return false;
+  if(skip!=="caps"&&f.caps.size&&!f.caps.has(capBand(p)))return false;
   if(skip!=="pos"&&f.pos.size&&!f.pos.has(posOf(p)))return false;
   if(skip!=="age"&&f.age.size&&!f.age.has(ageBand(p)))return false;
   if(skip!=="form"&&f.form.size&&!f.form.has(formBand(p)))return false;
@@ -113,6 +132,10 @@ function rows(){
     apps:p=>(p.st||{}).a||0,
     goals:p=>(p.st||{}).g||0,
     mv:p=>num(p.market_value_eur),
+    // Senior first, youth as the tiebreak: sorting by "caps" means "who is the
+    // most experienced international", and one senior appearance outranks any
+    // number of youth ones.
+    caps:p=>{const c=caps(p);return c.senior*1000+c.youth;},
     form:p=>{const s=status(p);return s?s.played*10-s.out:-99;},
   }[S.sort]||(p=>p.name);
   return out.sort((a,b)=>{
@@ -126,8 +149,28 @@ function rows(){
 const COLS=[
   ["name","Player",""],["track","Track","hide-s"],["age","Age","r"],
   ["club","Club","hide-s"],["form","Last 10","hide-s"],["sig","Signal","hide-s"],
+  ["caps","Caps S/Y","r hide-s"],
   ["apps","Apps","r"],["goals","G","r"],["mv","Value","r"],
 ];
+// Senior in red because it is the number that ends eligibility; youth in muted
+// grey because under Article 9 it changes nothing. A player with 0/26 is fully
+// available and a player with 7/26 is not, and that has to read at a glance.
+function capsCell(p){
+  const c=caps(p);
+  if(!c.total)return `<span class="nostrip">—</span>`;
+  // Green for Egypt, red for another country. Colouring every senior cap red
+  // would flag a capped Egypt international as a problem, when he is the
+  // opposite — the one player already committed.
+  const g=(MSTATS[p.tm_id]||{}).natl||[];
+  const seniorTeams=[...new Set(g.filter(x=>x.part==="P"&&!isYouth(x.team)).map(x=>x.team))];
+  const forEgypt=seniorTeams.length&&seniorTeams.every(t=>/^egypt/i.test(t||""));
+  const cls=!c.senior?"z":forEgypt?"eg":"sr";
+  const tip=c.teams.join(", ")
+    +(c.senior?forEgypt?" — senior caps for Egypt":" — cap-tied elsewhere":" — youth only, still selectable")
+    +" · click for every appearance";
+  return `<span class="caps" title="${esc(tip)}">`
+    +`<b class="${cls}">${c.senior}</b><i>/</i><span class="y">${c.youth}</span></span>`;
+}
 function drawTable(){
   const list=rows();
   $("count").innerHTML=`${list.length}<small>${list.length===DATA.length?"players":"of "+DATA.length}</small>`;
@@ -170,6 +213,7 @@ function drawTable(){
         ${p.plays_in&&!isFree(p)?`<small class="cn">${esc(p.plays_in)}</small>`:""}</td>
       <td class="hide-s">${strip}</td>
       <td class="hide-s">${g?`<span class="sig ${g[0]}">${g[1]}</span>`:`<span class="nostrip">—</span>`}</td>
+      <td class="r hide-s">${capsCell(p)}</td>
       <td class="r num">${st.a||0}</td>
       <td class="r num">${st.g||0}</td>
       <td class="r num">${esc(p.mv_now||"—")}</td></tr>`;
@@ -193,7 +237,7 @@ function facet(title,group,opts){
   const body=opts.map(([val,label])=>{
     const n=DATA.filter(p=>passes(p,group)&&({
       track:x=>x.track===val, region:x=>regionOf(x)===val,
-      club:x=>(isFree(x)?"free":"signed")===val,
+      club:x=>(isFree(x)?"free":"signed")===val, caps:x=>capBand(x)===val,
       pos:x=>posOf(x)===val, age:x=>ageBand(x)===val, form:x=>formBand(x)===val,
     })[group](p)).length;
     return `<label class="opt"><input type="checkbox" data-g="${group}" value="${esc(val)}"${f.has(val)?" checked":""}>
@@ -207,6 +251,7 @@ function drawFilters(){
    +facet("Region","region",[["eu","Europe"],["gulf","Gulf & Middle East"],["afr","Africa"],
                              ["amer","Americas"],["asia","Asia & Oceania"],["other","Unclassified"]])
    +facet("Club status","club",[["signed","At a club"],["free","Free agent"]])
+   +facet("International","caps",[["senior","Senior caps"],["youth","Youth only"],["none","Never capped"]])
    +facet("Position","pos",POS)
    +facet("Age","age",[["u18","18 or under"],["u21","19–21"],["u23","22–23"],["24","24+"]])
    +facet("Club form","form",[["hot","Regular"],["mid","Rotating"],["bench","Benched"],["cold","Out of favour"]])
@@ -239,6 +284,51 @@ function trBlock(p){
       <td class="o">${esc(t.from||"?")} <span class="arr">→</span> <b>${esc(t.to||"?")}</b></td>
       <td class="r">${fee&&fee!=="-"&&fee!=="?"?`<span class="fee${free?" f":""}">${esc(fee)}</span>`:""}</td>
     </tr>`;}).join("")}</table>`;
+}
+// Every international appearance, grouped by the side he played for. This is the
+// evidence behind the caps column: a scout who sees 0/26 needs to be able to
+// check it rather than take the number on trust.
+function natBlock(p){
+  const g=(MSTATS[p.tm_id]||{}).natl||[];
+  if(!g.length)return "";
+  const by=new Map();
+  g.forEach(x=>{const k=x.team||"—";if(!by.has(k))by.set(k,[]);by.get(k).push(x);});
+  const teams=[...by.entries()].sort((a,b)=>b[1].length-a[1].length);
+
+  const blocks=teams.map(([team,gs])=>{
+    const played=gs.filter(x=>x.part==="P").length;
+    const youth=isYouth(team);
+    const rows=gs.slice(0,8).map(x=>{
+      const ret=[(x.g?x.g+"G":""),(x.a?x.a+"A":"")].filter(Boolean).join(" ");
+      return `<tr>
+        <td class="d">${esc((x.d||"").slice(2))}</td>
+        <td class="o">${esc(x.opp||"—")}<small>${esc(x.cn||"")}</small></td>
+        <td class="r">${x.part==="P"?(x.min?`${x.min}'`:"played")
+          :x.part==="B"?`<span class="d">bench</span>`:`<span class="d">out</span>`}${ret?` <b>${esc(ret)}</b>`:""}</td>
+      </tr>`;}).join("");
+    return `<div class="ntgrp">
+      <div class="ntgh"><b class="${youth?"y":"sr"}">${esc(team)}</b>
+        <span>${played} played of ${gs.length}${youth?"":" · senior"}</span></div>
+      <table class="mtable">${rows}</table>
+      ${gs.length>8?`<div class="more">+${gs.length-8} more</div>`:""}</div>`;
+  }).join("");
+
+  // Senior caps FOR EGYPT are not a problem — they mean he already plays for
+  // Egypt. Reading "cap-tied" on a senior Egypt international inverts the whole
+  // point: Hamza Abdelkarim has 6 caps for Egypt and the panel called him
+  // unavailable.
+  const c=caps(p);
+  const seniorTeams=(MSTATS[p.tm_id]||{}).natl
+    ?[...new Set(((MSTATS[p.tm_id]||{}).natl||[])
+       .filter(x=>x.part==="P"&&!isYouth(x.team)).map(x=>x.team))]:[];
+  const forEgypt=seniorTeams.length&&seniorTeams.every(t=>/^egypt/i.test(t||""));
+  const verdict=!c.senior
+    ? `<b class="ok">No senior appearances</b> — youth caps do not cap-tie, so he can still be selected.`
+    : forEgypt
+      ? `<b class="ok">${c.senior} senior cap${c.senior===1?"":"s"} for Egypt</b> — already committed, and playing.`
+      : `<b class="sr">${c.senior} senior appearance${c.senior===1?"":"s"} for ${esc(seniorTeams.join(", "))}</b> — cap-tied under FIFA Article 9.`;
+  return `<div class="psec">National team · ${g.length} call-ups</div>
+    <div class="verdict">${verdict}</div>${blocks}`;
 }
 function openPanel(id){
   const p=DATA.find(x=>x.tm_id===id); if(!p)return;
@@ -285,6 +375,7 @@ function openPanel(id){
         <div class="prow"><span>${esc(nx.date||"")}${nx.time?" "+esc(nx.time):""}</span><b>${esc(nx.opp||"")}</b></div>`:""}
       ${form?`<div class="psec">Recent club matches</div><table class="mtable">${form}</table>`:""}
       ${traj}
+      ${natBlock(p)}
       <div class="psec">Transfer history</div>
       ${trBlock(p)}
     </div>`;
