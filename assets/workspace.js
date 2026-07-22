@@ -711,7 +711,7 @@ function drawScouting(){
     return `<tr data-id="${esc(p.tm_id)}">
       <td><span class="who">${p.photo?`<img class="face" src="${esc(p.photo)}" alt="" loading="lazy">`
         :`<span class="face ini">${esc(initials(p.name))}</span>`}<span class="nm"><b>${esc(p.name)}</b>
-        <span>${esc(p.age||"")} · ${crest}${esc(p.club||"")}${p.plays_in?` · <b class="ctry">${esc(p.plays_in)}</b>`:""}</span></span></span></td>
+        <span>${esc(p.age||"")} · ${crest}${esc(p.club||"")}${p.plays_in?` · ${esc(p.plays_in)}`:""}</span></span></span></td>
       <td>${strip}</td>
       <td class="hide-s tally"><b>${s.played||0}</b> played · ${s.bench||0} bench · ${s.out||0} out</td>
       <td class="r num hide-s">${esc(ga)}</td>

@@ -322,19 +322,30 @@ td.sides>.sidesw{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
 /* One shared grid across every position table. Sized per-table, each sizes to
    its own content and the columns step out of line between sections — the four
    tables read as four unrelated lists rather than one table with headings. */
-.sctbl{table-layout:fixed}
+/* The five fixed columns total 846px, so at the grid's 940 minimum the strip
+   would be squeezed to 94px and its ten 12px blocks would overflow the cell.
+   1040 guarantees the strip its 171px; beyond that the extra space goes to the
+   strip column, which pushes it right of the name as the window widens. */
+.sctbl{table-layout:fixed;min-width:1040px}
 /* The player column was width:auto, so it absorbed every spare pixel and a table
-   whose subject is the strip gave a third of itself to a name. Fixed at 300px;
-   the strip column takes the slack instead. */
-.sctbl col.c-pl{width:300px} .sctbl col.c-st{width:auto}
-.sctbl col.c-ta{width:190px} .sctbl col.c-ga{width:72px}
+   whose subject is the strip gave a third of itself to a name. Fixed now -- but
+   at 300px the subtitle ran out of room: "24 · Football Bourg-en-Bresse Péronnas
+   01 · France" needs about 275px against 233px of usable width, so the country
+   was being clipped mid-string and left a trailing separator. 360px fits every
+   subtitle in the data. */
+.sctbl col.c-pl{width:360px} .sctbl col.c-st{width:210px}
+.sctbl col.c-ta{width:auto}  .sctbl col.c-ga{width:72px}
 .sctbl col.c-sg{width:120px} .sctbl col.c-dt{width:104px}
+/* The strip gets a fixed 210px -- 171px of blocks plus a little air -- rather
+   than the slack. Given the slack it kept drifting further from the name as the
+   window widened, until the two ends of the same row had no visual connection.
+   The squad-status column absorbs the extra space instead, since it is text and
+   reads fine at any width. */
 .sctbl td.c,.sctbl th.c{text-align:center}
-/* Which country he plays in. The region facet groups eight Gulf states into one
-   bucket, so "who do we have in Qatar" — a question a scout actually asks — was
-   not answerable from this view at all. Slightly brighter than the club, because
-   the club name is often unfamiliar and the country always locates it. */
-.ctry{color:var(--ink-2);font-weight:600}
+/* The country a player plays in is appended to the club as plain text, in the
+   same weight and colour, so it reads as the tail of one phrase --
+   "Al-Shamal SC · Qatar". It carried its own class and a heavier weight, which
+   made it look like a separate field that had wrapped onto its own line. */
 .tally{font-size:11.5px;color:var(--mut);white-space:nowrap}
 .tally b{color:var(--ink);font-weight:800}
 @media(max-width:900px){
