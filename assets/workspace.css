@@ -187,7 +187,15 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;min-width:940px}
 /* In the National view these groups are the page, not a panel section, so they
    need the breathing room and separation a stacked list of tables requires. */
 #body>.ntgrp{margin-bottom:26px}
-#body>.ntgrp+.ntgrp{border-top:1px solid var(--line);padding-top:20px}
+/* No border-top between groups. Every row already draws a bottom border, so a
+   group separator on top of the last row's own line produced two rules a few
+   pixels apart at different widths -- the group's spanning the full container,
+   the row's ending with the table. Space alone separates them, and the coloured
+   heading does the rest. */
+#body>.ntgrp+.ntgrp{padding-top:22px}
+/* The last row in each group keeps its divider only where a group follows, so a
+   table never ends on a dangling line. */
+#body>.ntgrp>.nttbl tr:last-child td{border-bottom:0}
 /* Group titles and notes indent to the same 12px the table cells use, so the
    heading, the note and the first column of the rows below all share one left
    edge instead of three. */
@@ -268,7 +276,12 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;min-width:940px}
 /* The caps figure is the row's conclusion and belongs hard right, in line down
    the page. Left to size itself it drifted with the badge row's length. */
 .nttbl td.caps-c{white-space:nowrap}
-.sides{display:flex;flex-wrap:wrap;gap:5px}
+/* The flex box goes on an inner span, not on the td. display:flex on a table
+   cell takes it out of table layout, so its bottom border no longer sits on the
+   same baseline as its neighbours' and the row divider breaks into offset
+   segments — which is what it looked like: one line under the name, another
+   starting further right at a different height. */
+td.sides>.sidesw{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
 /* Tightened so five sides fit the 506px column without wrapping — Salah and
    Hegazy both carry five, and a single row wrapping while the rest stay on one
    line is the ragged edge this column is trying to avoid. */

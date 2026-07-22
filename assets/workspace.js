@@ -681,7 +681,7 @@ function drawNational(){
           :`<span class="face ini">${esc(initials(p.name))}</span>`}<span class="nm"><b>${esc(p.name)}</b>
           <span>${esc(p.position||"")} · ${esc(p.club||"")}</span></span></span></td>
         <td class="r num hide-s">${esc(p.age||"—")}</td>
-        <td class="sides hide-s">${sides(p)}</td>
+        <td class="sides hide-s"><span class="sidesw">${sides(p)}</span></td>
         <td class="r caps-c">${capsCell(p)}</td></tr>`).join("")}</tbody></table></div>`;
   }).join("");
   $("body").querySelectorAll("tr[data-id]").forEach(tr=>tr.onclick=()=>openPanel(tr.dataset.id));
