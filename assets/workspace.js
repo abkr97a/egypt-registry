@@ -434,11 +434,13 @@ const TRACKVIEWS=new Set(["roster","dual","single"]);
 function drawNav(){
   const n=DATA.length, dual=DATA.filter(p=>p.track==="dual").length;
   const withFix=DATA.filter(p=>NEXTM[p.tm_id]).length;
+  const withMatch=DATA.filter(p=>{const s=status(p);return s&&s.n;}).length;
   const withNat=DATA.filter(p=>((MSTATS[p.tm_id]||{}).natl||[]).length).length;
   $("nav").innerHTML=[
     ["roster","Roster",n],
     ["dual","Dual nationality",dual],
     ["single","Egyptian only",n-dual],
+    ["scout","Scouting mode",withMatch],
     ["fix","Fixtures",withFix],
     ["nat","National teams",withNat],
   ].map(([k,l,c])=>`<button data-v="${k}"${S.view===k?' class="on"':""}>${esc(l)}<span class="n">${c}</span></button>`).join("");
@@ -536,9 +538,66 @@ function drawNational(){
   $("body").querySelectorAll("tr[data-id]").forEach(tr=>tr.onclick=()=>openPanel(tr.dataset.id));
 }
 
+/* ---------- view: scouting ---------- */
+// Squad status across each player's last ten CLUB matchdays — started, benched,
+// or left out entirely. A run of grey says more about a prospect's standing than
+// any career total, which is why this is a view of its own rather than a column.
+//
+// Grouped by position because that is how a scout reads a list: nobody compares
+// a keeper's minutes to a winger's. One shared colgroup keeps the columns aligned
+// across all four tables — sized per-table they step out of line between groups.
+const SCGRP=[["GK","Goalkeepers"],["DF","Defenders"],["MF","Midfield"],["FW","Forwards"]];
+function drawScouting(){
+  const list=rows().filter(p=>{const s=status(p);return s&&s.n;});
+  $("count").innerHTML=`${list.length}<small>with match data</small>`;
+  if(!list.length){
+    $("body").innerHTML=`<div class="empty"><b>Nobody matches</b>No player in this filter has recent club match data.</div>`;
+    return;
+  }
+  // TM posts a fixture before its minutes, so "0' played" would be a
+  // contradiction rather than a fact — say the minutes are pending instead.
+  const did=x=>x.s==="P"?(x.min?`${x.min}' played`:"played — minutes not published yet")
+            :x.s==="B"?"unused sub":"not in squad";
+  const ret=x=>{const b=[];if(x.g)b.push(x.g+(x.g>1?" goals":" goal"));
+                if(x.a)b.push(x.a+(x.a>1?" assists":" assist"));
+                return b.length?" · "+b.join(", "):"";};
+  const row=p=>{
+    const m=MSTATS[p.tm_id]||{}, s=m.status||{}, g=signal(p);
+    const strip=(m.squad||[]).slice(0,10).slice().reverse().map(x=>
+      `<i class="${x.s}" title="${esc(x.d||"")} ${esc(x.cn||"")}${x.opp?" vs "+esc(x.opp):""} — ${esc(did(x))}${esc(ret(x))}"></i>`).join("");
+    const ga=(s.g||s.a)?`${s.g?s.g+"G":""}${s.g&&s.a?" ":""}${s.a?s.a+"A":""}`:"—";
+    const crest=CRESTS[p.club_id]?`<img class="cc" src="${esc(CRESTS[p.club_id])}" alt="" loading="lazy">`:"";
+    return `<tr data-id="${esc(p.tm_id)}">
+      <td><span class="who">${p.photo?`<img class="face" src="${esc(p.photo)}" alt="" loading="lazy">`
+        :`<span class="face ini">${esc(initials(p.name))}</span>`}<span class="nm"><b>${esc(p.name)}</b>
+        <span>${esc(p.age||"")} · ${crest}${esc(p.club||"")}</span></span></span></td>
+      <td><span class="strip">${strip||""}</span></td>
+      <td class="hide-s tally"><b>${s.played||0}</b> played · ${s.bench||0} bench · ${s.out||0} out</td>
+      <td class="r num hide-s">${esc(ga)}</td>
+      <td class="c">${g?`<span class="sig ${g[0]}">${g[1]}</span>`:`<span class="nostrip">—</span>`}</td>
+      <td class="r hide-s"><small class="cn">${esc(s.latest_date||"")}</small></td></tr>`;
+  };
+  const cols=`<colgroup><col class="c-pl"><col class="c-st"><col class="c-ta"><col class="c-ga"><col class="c-sg"><col class="c-dt"></colgroup>`;
+  const head=`<thead><tr><th>Player</th><th>Last 10 club games</th>
+    <th class="hide-s">Squad status</th><th class="r hide-s">G/A</th>
+    <th class="c">Signal</th><th class="r hide-s">Last game</th></tr></thead>`;
+  $("body").innerHTML=`<div class="sclegend">
+      <span><i class="P"></i>played</span><span><i class="B"></i>benched</span>
+      <span><i class="O"></i>not in squad</span>
+      <span>oldest → newest · hover a block for the match, goals and assists</span></div>`
+    +SCGRP.map(([k,label])=>{
+      const g=list.filter(p=>posOf(p)===k);
+      if(!g.length)return "";
+      return `<div class="scgrp"><div class="ntgh"><b>${esc(label)}</b><span>${g.length}</span></div>
+        <table class="grid sctbl">${cols}${head}<tbody>${g.map(row).join("")}</tbody></table></div>`;
+    }).join("");
+  $("body").querySelectorAll("tr[data-id]").forEach(tr=>tr.onclick=()=>openPanel(tr.dataset.id));
+}
+
 function drawBody(){
   if(S.view==="fix")return drawFixtures();
   if(S.view==="nat")return drawNational();
+  if(S.view==="scout")return drawScouting();
   drawTable();
 }
 function draw(){ drawNav(); drawFilters(); drawBody(); }

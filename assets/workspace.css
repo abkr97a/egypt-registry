@@ -176,6 +176,34 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;min-width:940px}
 .strip i{width:9px;height:19px;border-radius:2px;display:block}
 .strip i.P{background:var(--up)} .strip i.B{background:var(--warn)}
 .strip i.O{background:var(--line-2)}
+
+/* Scouting mode — the strip is the content here, not a column, so the legend
+   that explains its colours has to lead the view. Nothing else on the page
+   says what green, amber and grey mean. */
+.sclegend{display:flex;flex-wrap:wrap;gap:16px;align-items:center;
+  padding:0 0 16px;font-size:11.5px;color:var(--mut)}
+.sclegend span{display:inline-flex;align-items:center;gap:6px}
+.sclegend i{width:9px;height:14px;border-radius:2px;display:inline-block}
+.sclegend i.P{background:var(--up)} .sclegend i.B{background:var(--warn)}
+.sclegend i.O{background:var(--line-2)}
+.scgrp{margin-bottom:26px}
+.scgrp .ntgh{margin-bottom:8px}
+.scgrp .ntgh span{font:700 10px/1 var(--sans);background:var(--line);
+  padding:4px 7px;border-radius:5px;color:var(--ink-2)}
+/* One shared grid across every position table. Sized per-table, each sizes to
+   its own content and the columns step out of line between sections — the four
+   tables read as four unrelated lists rather than one table with headings. */
+.sctbl{table-layout:fixed}
+.sctbl col.c-pl{width:auto} .sctbl col.c-st{width:150px}
+.sctbl col.c-ta{width:190px} .sctbl col.c-ga{width:72px}
+.sctbl col.c-sg{width:120px} .sctbl col.c-dt{width:104px}
+.sctbl td.c,.sctbl th.c{text-align:center}
+.tally{font-size:11.5px;color:var(--mut);white-space:nowrap}
+.tally b{color:var(--ink);font-weight:800}
+@media(max-width:900px){
+  .sctbl{table-layout:auto}
+  .sctbl col.c-st{width:auto}
+}
 .nostrip{color:var(--mut);font-size:11.5px}
 
 .sig{font:700 9.5px/1 var(--sans);letter-spacing:.05em;padding:4px 8px;border-radius:20px;
