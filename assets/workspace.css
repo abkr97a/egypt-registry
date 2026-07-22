@@ -239,11 +239,29 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;min-width:940px}
    view groups by what his caps MEAN (cap-tied / committed / still open), so the
    sides themselves become evidence rather than headings. */
 .ntnote{font-size:11.5px;color:var(--mut);margin:0 0 10px;max-width:70ch}
+/* Fixed columns so the three bucket tables line up with each other. The badges
+   take the slack, since that is the only column whose content genuinely varies
+   in width — Salah carries five sides, most players one. */
+.nttbl{table-layout:fixed;min-width:1080px}
+.nttbl col.c-pl{width:320px} .nttbl col.c-ag{width:64px}
+.nttbl col.c-sd{width:auto}  .nttbl col.c-cp{width:96px}
+/* 1080 rather than the grid's 940: the widest row carries five sides (Hegazy,
+   Salah) at roughly 105px each, and at 940 the badge column is 460px so those
+   wrap to a second line while every other row stays single — a ragged block of
+   rows with no pattern to it. Wrapping is still allowed, it just stops being
+   the common case. */
+/* The caps figure is the row's conclusion and belongs hard right, in line down
+   the page. Left to size itself it drifted with the badge row's length. */
+.nttbl td.caps-c{white-space:nowrap}
 .sides{display:flex;flex-wrap:wrap;gap:5px}
 .natside{display:inline-flex;align-items:center;gap:4px;font:700 10px/1 var(--sans);
   padding:4px 7px;border-radius:5px;background:var(--line);color:var(--ink-2);white-space:nowrap}
 .natside .cc{width:13px;height:13px}
-.natside i{font-style:normal;font-weight:800;opacity:.65;font-variant-numeric:tabular-nums}
+/* The count gets its own fixed box on the right of the badge. Sized to its text
+   it sat a different distance from the flag on every badge, so the numbers --
+   the part being compared -- never lined up with each other. */
+.natside i{font-style:normal;font-weight:800;opacity:.7;font-variant-numeric:tabular-nums;
+  min-width:16px;text-align:right;margin-left:1px}
 /* Senior for another country is the one that ends eligibility, so it is the one
    that gets the colour. Youth stays neutral: under Article 9 it changes nothing. */
 .natside.sr{background:rgba(210,30,60,.14);color:var(--red-soft)}

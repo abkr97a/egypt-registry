@@ -605,6 +605,12 @@ const NATBUCKETS=[
   ["egypt","Senior caps for Egypt", "Already committed and playing. These are the successes, not the targets."],
   ["open", "Youth caps only — still selectable", "Youth appearances never cap-tie. Every one of these players remains available to Egypt."],
 ];
+// One shared grid across all three bucket tables. Without it each table sizes to
+// its own content, so the age sat in a different place in "Cap-tied elsewhere"
+// than in "Senior caps for Egypt" and the badge rows started at three different
+// x-positions — three tables reading as three unrelated lists rather than one
+// page. Same reason Scouting mode carries a colgroup.
+const NTCOLS=`<colgroup><col class="c-pl"><col class="c-ag"><col class="c-sd"><col class="c-cp"></colgroup>`;
 function natBucket(p){
   const played=((MSTATS[p.tm_id]||{}).natl||[]).filter(x=>x.part==="P");
   const snr=[...new Set(played.filter(x=>isSenior(x.team)).map(x=>x.team))];
@@ -643,13 +649,13 @@ function drawNational(){
       <div class="ntgh"><b class="${key==="tied"?"sr":key==="egypt"?"eg":"y"}">${esc(label)}</b>
         <span>${g.length} player${g.length===1?"":"s"}</span></div>
       <p class="ntnote">${esc(note)}</p>
-      <table class="grid"><tbody>${g.map(p=>`<tr data-id="${esc(p.tm_id)}">
+      <table class="grid nttbl">${NTCOLS}<tbody>${g.map(p=>`<tr data-id="${esc(p.tm_id)}">
         <td><span class="who">${p.photo?`<img class="face" src="${esc(p.photo)}" alt="" loading="lazy">`
           :`<span class="face ini">${esc(initials(p.name))}</span>`}<span class="nm"><b>${esc(p.name)}</b>
           <span>${esc(p.position||"")} · ${esc(p.club||"")}</span></span></span></td>
         <td class="r num hide-s">${esc(p.age||"—")}</td>
         <td class="sides hide-s">${sides(p)}</td>
-        <td class="r">${capsCell(p)}</td></tr>`).join("")}</tbody></table></div>`;
+        <td class="r caps-c">${capsCell(p)}</td></tr>`).join("")}</tbody></table></div>`;
   }).join("");
   $("body").querySelectorAll("tr[data-id]").forEach(tr=>tr.onclick=()=>openPanel(tr.dataset.id));
 }
