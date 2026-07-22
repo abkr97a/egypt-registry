@@ -157,8 +157,13 @@ function blockTitle(p,x){
 // is the entire reason a scout reads this strip.
 function stripHTML(p,n){
   const sq=((MSTATS[p.tm_id]||{}).squad||[]).slice(0,n).slice().reverse();
-  if(!sq.length)return `<span class="nostrip">—</span>`;
-  return `<span class="strip">${sq.map(x=>{
+  // Width follows the block count, so a 6-block strip on Fixtures and a 10-block
+  // strip on the roster each reserve exactly their own column. Set even when
+  // there are no games: an em-dash in a collapsed cell drags the next column
+  // left, which is the same misalignment as a short strip.
+  const w=`style="width:${n*12+(n-1)*3}px"`;
+  if(!sq.length)return `<span class="strip nostrip" ${w}>—</span>`;
+  return `<span class="strip" ${w}>${sq.map(x=>{
     const hit=(x.g||0)+(x.a||0)>0;
     return `<i class="${x.s}${hit?" hit":""}" title="${esc(blockTitle(p,x))}">${hit?"★":""}</i>`;
   }).join("")}</span>`;
@@ -464,23 +469,26 @@ function closePanel(){
 }
 
 /* ---------- shell ---------- */
-// Roster/dual/single are three cuts of ONE table, driven by the track facet.
-// Fixtures and National teams are different questions about the same players and
-// draw their own body. Keeping the distinction explicit stops the nav from
-// pretending a view is a filter or the reverse.
-const TRACKVIEWS=new Set(["roster","dual","single"]);
+// Every view here asks a different question about the same filtered set: the
+// roster lists them, Scouting shows whether they are playing, Fixtures where they
+// play next, National what their caps mean. A CUT of the set is not a view — that
+// is what the sidebar facets are for, which is why dual/Egypt-only stopped being
+// tabs. The nav must never restate a filter, or the two can disagree.
 function drawNav(){
-  const n=DATA.length, dual=DATA.filter(p=>p.track==="dual").length;
+  const n=DATA.length;
   const withFix=DATA.filter(p=>NEXTM[p.tm_id]).length;
   const withMatch=DATA.filter(p=>{const s=status(p);return s&&s.n;}).length;
   const withNat=DATA.filter(p=>((MSTATS[p.tm_id]||{}).natl||[]).length).length;
-  // Shorter labels than the sidebar carried. A tab strip is read horizontally and
-  // "Dual nationality" / "National teams" cost more width than they earn; the
-  // title attribute keeps the full wording for anyone who needs it.
+  // Four views, not six. Dual and Egypt-only were tabs AND a sidebar facet -- the
+  // same cut of the same table, reachable two ways, each able to contradict the
+  // other's state. They are a filter, so the filter keeps them; a view is a
+  // different question, and "dual nationality" is not a different question.
+  //
+  // Shorter labels than the sidebar carried: a tab strip is read horizontally and
+  // "National teams" costs more width than it earns. The title attribute keeps
+  // the full wording, and says what each view is for.
   $("nav").innerHTML=[
     ["roster","Roster",n,"Every player in the registry"],
-    ["dual","Dual",dual,"Dual nationality — a second passport the federation cannot see"],
-    ["single","Egypt only",n-dual,"Single nationality — Egyptian passport only"],
     ["scout","Scouting",withMatch,"Squad status across the last ten club matchdays"],
     ["fix","Fixtures",withFix,"Next match for each player's club"],
     ["nat","National",withNat,"National-team appearances and what they mean for eligibility"],
@@ -489,10 +497,11 @@ function drawNav(){
     S.view=b.dataset.v;
     // The nav is a shortcut into the same facet the sidebar exposes, so the two
     // can never show different things.
-    if(TRACKVIEWS.has(S.view)){
-      S.f.track.clear();
-      if(S.view!=="roster")S.f.track.add(S.view);
-    }
+    // Filters survive a view change. They used to be reset here, because two of
+    // the tabs WERE track filters and switching away had to undo them. With those
+    // gone, clearing would throw away a filter the user set deliberately —
+    // narrowing to dual nationality and then opening Fixtures should show that
+    // narrowed set, not all 172 again.
     draw();
   });
 }

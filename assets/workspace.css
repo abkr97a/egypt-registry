@@ -188,8 +188,20 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;min-width:940px}
 :root[data-theme="light"] .tag.dual{color:var(--red)}
 
 /* Form strip — oldest left, newest right, matching the dossier's reading order. */
+/* Width is set inline from the block count, not fixed here: the roster shows ten
+   and Fixtures six, so one hard value would be wrong on one of them. Eleven
+   players have fewer than ten games on record, and a strip that shrinks to its
+   own length drags the next column left — the ragged edge reads as a rendering
+   fault rather than as "this player has less history". Blocks stay left-aligned
+   so the newest sits in the same place on every row. */
 .strip{display:inline-flex;gap:3px}
-.strip i{width:9px;height:19px;border-radius:2px;display:block}
+.strip.nostrip{align-items:center;color:var(--mut)}
+/* One width for every block, starred or not. Widening only the starred ones made
+   each strip a different length and knocked the rows out of alignment down the
+   column — the strip is read by scanning vertically, so a ragged right edge
+   costs more than the extra glyph room was worth. 12px fits the star and keeps
+   ten blocks inside the same column. */
+.strip i{width:12px;height:19px;border-radius:2px;display:block;flex:none}
 .strip i.P{background:var(--up)} .strip i.B{background:var(--warn)}
 .strip i.O{background:var(--line-2)}
 /* A goal or an assist gets a star. A green block that was a goal is not the same
@@ -197,8 +209,7 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;min-width:940px}
    the reason a scout scans this strip at all — it was carried in the tooltip,
    where you had to already suspect something to go looking for it.
    Wider, because a 9px column cannot hold a legible glyph. */
-.strip i.hit{width:15px;font:900 10px/19px var(--sans);text-align:center;
-  color:#fff;letter-spacing:0}
+.strip i.hit{font:900 9px/19px var(--sans);text-align:center;color:#fff;letter-spacing:0}
 /* On amber and grey the white star has too little contrast to read. */
 .strip i.B.hit{color:#3d2c00}
 .strip i.O.hit{color:var(--ink-2)}
