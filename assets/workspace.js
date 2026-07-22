@@ -565,12 +565,18 @@ function drawFixtures(){
   const body=list.map(p=>{
     const f=NEXTM[p.tm_id], m=MSTATS[p.tm_id]||{};
     const crest=CRESTS[f.oid]?`<img class="cc" src="${esc(CRESTS[f.oid])}" alt="" loading="lazy">`:"";
+    // His own club's badge, which this view never showed — only the opponent's.
+    // A fixture is two teams, and a scout reading a list of them recognises the
+    // badge faster than the name. NEXTM.sid is the club the fixture belongs to,
+    // which is right even when the player has just transferred.
+    const own=CRESTS[f.sid]||CRESTS[p.club_id];
+    const ownc=own?`<img class="cc" src="${esc(own)}" alt="" loading="lazy">`:"";
     const strip=stripHTML(p,6);
     const g=signal(p);
     return `<tr data-id="${esc(p.tm_id)}">
       <td><span class="who">${p.photo?`<img class="face" src="${esc(p.photo)}" alt="" loading="lazy">`
         :`<span class="face ini">${esc(initials(p.name))}</span>`}<span class="nm"><b>${esc(p.name)}</b>
-        <span>${esc(p.club||"")}</span></span></span></td>
+        <span>${ownc}${esc(p.club||"")}${p.plays_in?` · ${esc(p.plays_in)}`:""}</span></span></span></td>
       <td class="hide-s"><b>${esc(f.date||"—")}</b><small class="cn">${esc(f.time||"")}</small></td>
       <td>${f.ha==="H"?'<span class="tag">Home</span>':'<span class="tag">Away</span>'} ${crest}${esc(f.opp||"—")}</td>
       <td class="hide-s">${strip}</td>
@@ -634,18 +640,32 @@ function drawNational(){
   // Every side he has played for, senior first, as badges. This is what the old
   // grouping conveyed; carrying it on the row costs one line and keeps the page
   // one row per player.
+  const country=t=>t.replace(/\s+(U-?\d\d|Olympic Team|Olympic)$/i,"");
   const sides=p=>{
     const played=((MSTATS[p.tm_id]||{}).natl||[]).filter(x=>x.part==="P");
     const by=new Map();
     played.forEach(x=>{const t=(x.team||"").trim();if(!t)return;by.set(t,(by.get(t)||0)+1);});
+    // Abbreviate only when every side is the same country. Haissem Hassan has
+    // Egypt plus France U17/U18 and Moustafa Moustafa has Egypt U23 plus Germany
+    // U16 -- shortening those to "U17" beside a French flag invites reading it as
+    // Egypt U17, which is the exact confusion this whole view exists to prevent.
+    const oneCountry=new Set([...by.keys()].map(country)).size<=1;
     return [...by.entries()]
       .sort((a,b)=>(isYouth(a[0])?1:0)-(isYouth(b[0])?1:0)||b[1]-a[1])
       .map(([t,n])=>{
         const flag=NATIDS[t]&&CRESTS[NATIDS[t]]
           ?`<img class="cc" src="${esc(CRESTS[NATIDS[t]])}" alt="" loading="lazy">`:"";
+        // "Egypt Olympic Team" -> "Olympic", "Egypt U20" -> "U20". Every badge on
+        // a row is nearly always the same country -- only 2 of 72 players span
+        // two -- so repeating it five times spends the column on a word the flag
+        // beside it already carries. The senior side keeps its full name, because
+        // "Egypt" alone IS the distinction there, and the hover always shows the
+        // unabbreviated side.
+        const lvl=/^(.*?)\s+(U-?\d\d|Olympic Team|Olympic)$/i.exec(t);
+        const label=(oneCountry&&lvl)?lvl[2].replace(/\s*Team$/i,""):t;
         // natside, not side: aside.side is the sidebar, and one class name for
         // both meant a sidebar rule could reach in and restyle these badges.
-        return `<span class="natside ${isYouth(t)?"y":/^egypt/i.test(t)?"eg":"sr"}" title="${esc(t)} — ${n} appearance${n===1?"":"s"}">${flag}${esc(t)}<i>${n}</i></span>`;
+        return `<span class="natside ${isYouth(t)?"y":/^egypt/i.test(t)?"eg":"sr"}" title="${esc(t)} — ${n} appearance${n===1?"":"s"}">${flag}${esc(label)}<i>${n}</i></span>`;
       }).join("");
   };
   $("body").innerHTML=NATBUCKETS.map(([key,label,note])=>{
@@ -691,7 +711,7 @@ function drawScouting(){
     return `<tr data-id="${esc(p.tm_id)}">
       <td><span class="who">${p.photo?`<img class="face" src="${esc(p.photo)}" alt="" loading="lazy">`
         :`<span class="face ini">${esc(initials(p.name))}</span>`}<span class="nm"><b>${esc(p.name)}</b>
-        <span>${esc(p.age||"")} · ${crest}${esc(p.club||"")}</span></span></span></td>
+        <span>${esc(p.age||"")} · ${crest}${esc(p.club||"")}${p.plays_in?` · <b class="ctry">${esc(p.plays_in)}</b>`:""}</span></span></span></td>
       <td>${strip}</td>
       <td class="hide-s tally"><b>${s.played||0}</b> played · ${s.bench||0} bench · ${s.out||0} out</td>
       <td class="r num hide-s">${esc(ga)}</td>

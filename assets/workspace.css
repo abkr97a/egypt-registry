@@ -54,9 +54,13 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .nav{display:flex;align-items:stretch;gap:2px;height:100%;min-width:0;overflow-x:auto;
   scrollbar-width:none}
 .nav::-webkit-scrollbar{display:none}
+/* The underline sits on the header's own bottom border, so -1px pulls it over
+   that line rather than leaving a hairline gap. Without align-items:stretch on
+   .nav the button is only as tall as its text and the underline floats
+   mid-header, detached from the tab it belongs to. */
 .nav button{display:inline-flex;align-items:center;gap:7px;padding:0 12px;
   color:var(--mut);font-weight:600;font-size:13px;white-space:nowrap;
-  border-bottom:2px solid transparent;margin-bottom:-1px}
+  border-bottom:2px solid transparent;margin-bottom:-1px;height:100%}
 .nav button:hover{color:var(--ink)}
 .nav button.on{color:var(--ink);border-bottom-color:var(--red)}
 .nav button .n{font:700 10.5px/1 var(--mono);color:var(--mut);
@@ -102,11 +106,18 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .tgl{padding:7px 9px;border:1px solid var(--line-2);border-radius:8px;color:var(--ink-2);font-size:13px}
 .tgl:hover{border-color:var(--red);color:var(--red)}
 
-.body{flex:1;overflow-y:auto;overflow-x:auto}
+/* Padding on the top and sides only. The table's own cells carry 12px, so the
+   left edge of a row already lines up with a heading given the same 12px here —
+   without it, group titles, notes and the legend sat flush against the window
+   while the rows they describe were inset, and nothing on the page shared a
+   left margin. */
+.body{flex:1;overflow-y:auto;overflow-x:auto;padding:14px 8px 24px}
 
 /* ---------- table ---------- */
 table.grid{width:100%;border-collapse:separate;border-spacing:0;min-width:940px}
-.grid thead th{position:sticky;top:0;z-index:2;background:var(--surface);
+/* -14px, matching .body's top padding. At top:0 the header sticks below that
+   padding and rows scroll through the gap above it. */
+.grid thead th{position:sticky;top:-14px;z-index:2;background:var(--surface);
   font:700 9.5px/1 var(--sans);letter-spacing:.13em;text-transform:uppercase;color:var(--mut);
   text-align:left;padding:11px 12px;border-bottom:1px solid var(--line);white-space:nowrap;
   cursor:pointer;user-select:none}
@@ -177,6 +188,10 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;min-width:940px}
    need the breathing room and separation a stacked list of tables requires. */
 #body>.ntgrp{margin-bottom:26px}
 #body>.ntgrp+.ntgrp{border-top:1px solid var(--line);padding-top:20px}
+/* Group titles and notes indent to the same 12px the table cells use, so the
+   heading, the note and the first column of the rows below all share one left
+   edge instead of three. */
+#body>.ntgrp>.ntgh,#body>.ntgrp>.ntnote,#body>.scgrp>.ntgh{padding-left:12px}
 .more{font-size:11px;color:var(--mut);padding-top:6px}
 /* The strip carries a title on every block; make it feel interactive. */
 .strip i{cursor:help}
@@ -242,21 +257,24 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;min-width:940px}
 /* Fixed columns so the three bucket tables line up with each other. The badges
    take the slack, since that is the only column whose content genuinely varies
    in width — Salah carries five sides, most players one. */
-.nttbl{table-layout:fixed;min-width:1080px}
-.nttbl col.c-pl{width:320px} .nttbl col.c-ag{width:64px}
-.nttbl col.c-sd{width:auto}  .nttbl col.c-cp{width:96px}
-/* 1080 rather than the grid's 940: the widest row carries five sides (Hegazy,
-   Salah) at roughly 105px each, and at 940 the badge column is 460px so those
-   wrap to a second line while every other row stays single — a ragged block of
-   rows with no pattern to it. Wrapping is still allowed, it just stops being
-   the common case. */
+.nttbl{table-layout:fixed;min-width:940px}
+.nttbl col.c-pl{width:290px} .nttbl col.c-ag{width:56px}
+.nttbl col.c-sd{width:auto}  .nttbl col.c-cp{width:88px}
+/* 940, matching every other table on the page. 1080 was wider than the content
+   area at common window sizes, so the table overflowed and its row dividers were
+   cut off at the window edge — which reads as a broken line, not as a scroll.
+   The badges shrink instead (below), which is the right trade: five sides fitting
+   in 506px matters less than the table fitting the window. */
 /* The caps figure is the row's conclusion and belongs hard right, in line down
    the page. Left to size itself it drifted with the badge row's length. */
 .nttbl td.caps-c{white-space:nowrap}
 .sides{display:flex;flex-wrap:wrap;gap:5px}
-.natside{display:inline-flex;align-items:center;gap:4px;font:700 10px/1 var(--sans);
-  padding:4px 7px;border-radius:5px;background:var(--line);color:var(--ink-2);white-space:nowrap}
-.natside .cc{width:13px;height:13px}
+/* Tightened so five sides fit the 506px column without wrapping — Salah and
+   Hegazy both carry five, and a single row wrapping while the rest stay on one
+   line is the ragged edge this column is trying to avoid. */
+.natside{display:inline-flex;align-items:center;gap:3px;font:700 9.5px/1 var(--sans);
+  padding:4px 6px;border-radius:5px;background:var(--line);color:var(--ink-2);white-space:nowrap}
+.natside .cc{width:12px;height:12px;margin-right:0}
 /* The count gets its own fixed box on the right of the badge. Sized to its text
    it sat a different distance from the flag on every badge, so the numbers --
    the part being compared -- never lined up with each other. */
@@ -271,8 +289,10 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;min-width:940px}
 /* Scouting mode — the strip is the content here, not a column, so the legend
    that explains its colours has to lead the view. Nothing else on the page
    says what green, amber and grey mean. */
+/* 12px left, matching the table cells' own padding, so the legend's first swatch
+   sits directly above the first strip block it explains. */
 .sclegend{display:flex;flex-wrap:wrap;gap:16px;align-items:center;
-  padding:0 0 16px;font-size:11.5px;color:var(--mut)}
+  padding:0 12px 18px;font-size:11.5px;color:var(--mut)}
 .sclegend span{display:inline-flex;align-items:center;gap:6px}
 /* Same width as a real block, so the legend swatch and the thing it explains are
    visibly the same object. */
@@ -290,10 +310,18 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;min-width:940px}
    its own content and the columns step out of line between sections — the four
    tables read as four unrelated lists rather than one table with headings. */
 .sctbl{table-layout:fixed}
-.sctbl col.c-pl{width:auto} .sctbl col.c-st{width:150px}
+/* The player column was width:auto, so it absorbed every spare pixel and a table
+   whose subject is the strip gave a third of itself to a name. Fixed at 300px;
+   the strip column takes the slack instead. */
+.sctbl col.c-pl{width:300px} .sctbl col.c-st{width:auto}
 .sctbl col.c-ta{width:190px} .sctbl col.c-ga{width:72px}
 .sctbl col.c-sg{width:120px} .sctbl col.c-dt{width:104px}
 .sctbl td.c,.sctbl th.c{text-align:center}
+/* Which country he plays in. The region facet groups eight Gulf states into one
+   bucket, so "who do we have in Qatar" — a question a scout actually asks — was
+   not answerable from this view at all. Slightly brighter than the club, because
+   the club name is often unfamiliar and the country always locates it. */
+.ctry{color:var(--ink-2);font-weight:600}
 .tally{font-size:11.5px;color:var(--mut);white-space:nowrap}
 .tally b{color:var(--ink);font-weight:800}
 @media(max-width:900px){
