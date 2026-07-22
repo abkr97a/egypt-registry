@@ -17,11 +17,12 @@ const GULF=new Set(["Qatar","United Arab Emirates","Saudi Arabia","Kuwait","Bahr
 const EU=new Set(["Germany","Belgium","England","Switzerland","Spain","France","Greece","Portugal","Turkey",
   "Italy","Netherlands","Sweden","Austria","Denmark","Norway","Finland","Scotland","Ireland","Poland",
   "Czech Republic","Slovakia","Cyprus","Romania","Bulgaria","Albania","Hungary","United States"]);
+// Where he PLAYS, from his club's country. country_crawled records where the
+// crawl found him — empty for 70 of 151 and stale after any transfer — which is
+// why the region filter used to return nothing sensible for Egypt-only players.
 function homeCountry(p){
-  const cc=p.country_crawled;
-  if(EU.has(cc)||GULF.has(cc))return cc;
-  const other=(p.citizenship||"").split("/").map(s=>s.trim()).find(c=>c&&c!=="Egypt");
-  return other||cc||"";
+  return p.plays_in || p.country_crawled
+    || (p.citizenship||"").split("/").map(s=>s.trim()).find(c=>c&&c!=="Egypt") || "";
 }
 function regionOf(p){
   const c=homeCountry(p);
@@ -122,9 +123,18 @@ function drawTable(){
     const face=p.photo?`<img class="face" src="${esc(p.photo)}" alt="" loading="lazy">`
                       :`<span class="face ini">${esc(initials(p.name))}</span>`;
     const crest=CRESTS[p.club_id]?`<img class="cc" src="${esc(CRESTS[p.club_id])}" alt="" loading="lazy">`:"";
+    // Oldest left, newest right. Each block names the match, the competition and
+    // what he did — the strip is unreadable without it, since a green block that
+    // was a goal looks identical to a quiet 90 minutes.
     const sq=(m.squad||[]).slice(0,10).slice().reverse();
+    const did=x=>x.s==="P"?(x.min?`${x.min}' played`:"played")
+              :x.s==="B"?"unused sub":"not in squad";
+    const ret=x=>[(x.g?x.g+"G":""),(x.a?x.a+"A":"")].filter(Boolean).join(" ");
     const strip=sq.length
-      ? `<span class="strip">${sq.map(x=>`<i class="${x.s}"></i>`).join("")}</span>`
+      ? `<span class="strip">${sq.map(x=>{
+          const r=ret(x);
+          return `<i class="${x.s}" title="${esc(x.d||"")} ${esc(x.cn||"")}${x.opp?" vs "+esc(x.opp):""} — ${esc(did(x))}${r?" · "+esc(r):""}"></i>`;
+        }).join("")}</span>`
       : `<span class="nostrip">—</span>`;
     const g=signal(p);
     const st=p.st||{};
@@ -133,7 +143,8 @@ function drawTable(){
         <span>${esc(p.position||"")}${p.national_team?" · "+esc(p.national_team):""}</span></span></span></td>
       <td class="hide-s"><span class="tag ${p.track}">${p.track==="dual"?"Dual":"Egypt only"}</span></td>
       <td class="r num">${esc(p.age||"—")}</td>
-      <td class="hide-s">${crest}${esc(p.club||"—")}</td>
+      <td class="hide-s">${crest}${esc(p.club||"—")}
+        ${p.plays_in?`<small class="cn">${esc(p.plays_in)}</small>`:""}</td>
       <td class="hide-s">${strip}</td>
       <td class="hide-s">${g?`<span class="sig ${g[0]}">${g[1]}</span>`:`<span class="nostrip">—</span>`}</td>
       <td class="r num">${st.a||0}</td>
