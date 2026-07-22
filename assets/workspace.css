@@ -48,15 +48,27 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .brand span{display:block;font:600 9.5px/1 var(--sans);letter-spacing:.2em;
   text-transform:uppercase;color:var(--red);margin-top:6px}
 
-.nav{padding:10px 10px 4px}
-.nav button{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;
-  border-radius:7px;color:var(--ink-2);font-weight:600;font-size:13.5px;text-align:left}
-.nav button:hover{background:var(--raised);color:var(--ink)}
-.nav button.on{background:var(--red);color:#fff}
-.nav button .n{margin-left:auto;font:700 11px/1 var(--mono);opacity:.75;
+/* Views live in the header as tabs. Underline rather than a filled pill: the
+   sidebar's filled-red state was the heaviest thing on screen, and a view is
+   context, not an alert. The active tab should read as "you are here", quietly. */
+.nav{display:flex;align-items:stretch;gap:2px;height:100%;min-width:0;overflow-x:auto;
+  scrollbar-width:none}
+.nav::-webkit-scrollbar{display:none}
+.nav button{display:inline-flex;align-items:center;gap:7px;padding:0 12px;
+  color:var(--mut);font-weight:600;font-size:13px;white-space:nowrap;
+  border-bottom:2px solid transparent;margin-bottom:-1px}
+.nav button:hover{color:var(--ink)}
+.nav button.on{color:var(--ink);border-bottom-color:var(--red)}
+.nav button .n{font:700 10.5px/1 var(--mono);color:var(--mut);
+  background:var(--raised);padding:3px 6px;border-radius:4px;
   font-variant-numeric:tabular-nums}
+.nav button.on .n{background:rgba(210,30,60,.14);color:var(--red)}
+:root[data-theme="light"] .nav button.on .n{color:var(--red)}
 
-.filters{padding:14px 16px;overflow-y:auto;flex:1;border-top:1px solid var(--line);margin-top:8px}
+/* No border-top: it separated the filters from the nav that used to sit above
+   them. With the nav in the header the sidebar is filters only, and the brand's
+   own bottom border is already the divider. */
+.filters{padding:14px 16px;overflow-y:auto;flex:1}
 .fgroup{margin-bottom:18px}
 .fgroup .h{font:700 9.5px/1 var(--sans);letter-spacing:.16em;text-transform:uppercase;
   color:var(--mut);margin-bottom:9px}
@@ -73,9 +85,13 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .main{display:flex;flex-direction:column;overflow:hidden;min-width:0}
 .top{height:var(--top);flex:none;display:flex;align-items:center;gap:14px;
   padding:0 20px;border-bottom:1px solid var(--line);background:var(--surface)}
-.count{font:800 15px/1 var(--sans);white-space:nowrap;font-variant-numeric:tabular-nums}
+/* The count follows the tabs and is pushed right, so it reads as a result of the
+   view rather than as a heading over it. min-width:0 lets the tab strip scroll
+   instead of forcing the header wider than the viewport. */
+.count{font:800 15px/1 var(--sans);white-space:nowrap;font-variant-numeric:tabular-nums;
+  margin-left:auto;flex:none}
 .count small{font-weight:500;color:var(--mut);font-size:12px;margin-left:6px}
-.search{position:relative;flex:0 1 320px;margin-left:auto}
+.search{position:relative;flex:0 1 260px;min-width:150px}
 .search input{width:100%;padding:8px 12px 8px 32px;border-radius:8px;
   border:1px solid var(--line-2);background:var(--bg);color:var(--ink);font-size:13px;outline:none}
 .search input:focus{border-color:var(--red)}
@@ -192,15 +208,15 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;min-width:940px}
    sides themselves become evidence rather than headings. */
 .ntnote{font-size:11.5px;color:var(--mut);margin:0 0 10px;max-width:70ch}
 .sides{display:flex;flex-wrap:wrap;gap:5px}
-.side{display:inline-flex;align-items:center;gap:4px;font:700 10px/1 var(--sans);
+.natside{display:inline-flex;align-items:center;gap:4px;font:700 10px/1 var(--sans);
   padding:4px 7px;border-radius:5px;background:var(--line);color:var(--ink-2);white-space:nowrap}
-.side .cc{width:13px;height:13px}
-.side i{font-style:normal;font-weight:800;opacity:.65;font-variant-numeric:tabular-nums}
+.natside .cc{width:13px;height:13px}
+.natside i{font-style:normal;font-weight:800;opacity:.65;font-variant-numeric:tabular-nums}
 /* Senior for another country is the one that ends eligibility, so it is the one
    that gets the colour. Youth stays neutral: under Article 9 it changes nothing. */
-.side.sr{background:rgba(210,30,60,.14);color:var(--red-soft)}
-.side.eg{background:rgba(46,157,90,.15);color:var(--up)}
-:root[data-theme="light"] .side.sr{color:var(--red)}
+.natside.sr{background:rgba(210,30,60,.14);color:var(--red-soft)}
+.natside.eg{background:rgba(46,157,90,.15);color:var(--up)}
+:root[data-theme="light"] .natside.sr{color:var(--red)}
 
 /* Scouting mode — the strip is the content here, not a column, so the legend
    that explains its colours has to lead the view. Nothing else on the page
@@ -300,4 +316,13 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;min-width:940px}
   .side.open{transform:none}
   .menu{display:inline-flex;padding:7px 9px;border:1px solid var(--line-2);border-radius:8px}
   .grid thead th.hide-s,.grid td.hide-s{display:none}
+  /* The header now carries a menu button, six tabs, the count and search. On a
+     phone that is more than fits, and the tabs are the part worth keeping — the
+     per-tab counts are the first thing to go, then the running count, which the
+     view itself makes obvious. The tab strip scrolls horizontally. */
+  .top{gap:8px;padding:0 12px}
+  .nav button{padding:0 9px;font-size:12.5px}
+  .nav button .n{display:none}
+  .count{display:none}
+  .search{flex:1 1 auto;min-width:110px}
 }

@@ -474,14 +474,17 @@ function drawNav(){
   const withFix=DATA.filter(p=>NEXTM[p.tm_id]).length;
   const withMatch=DATA.filter(p=>{const s=status(p);return s&&s.n;}).length;
   const withNat=DATA.filter(p=>((MSTATS[p.tm_id]||{}).natl||[]).length).length;
+  // Shorter labels than the sidebar carried. A tab strip is read horizontally and
+  // "Dual nationality" / "National teams" cost more width than they earn; the
+  // title attribute keeps the full wording for anyone who needs it.
   $("nav").innerHTML=[
-    ["roster","Roster",n],
-    ["dual","Dual nationality",dual],
-    ["single","Egyptian only",n-dual],
-    ["scout","Scouting mode",withMatch],
-    ["fix","Fixtures",withFix],
-    ["nat","National teams",withNat],
-  ].map(([k,l,c])=>`<button data-v="${k}"${S.view===k?' class="on"':""}>${esc(l)}<span class="n">${c}</span></button>`).join("");
+    ["roster","Roster",n,"Every player in the registry"],
+    ["dual","Dual",dual,"Dual nationality — a second passport the federation cannot see"],
+    ["single","Egypt only",n-dual,"Single nationality — Egyptian passport only"],
+    ["scout","Scouting",withMatch,"Squad status across the last ten club matchdays"],
+    ["fix","Fixtures",withFix,"Next match for each player's club"],
+    ["nat","National",withNat,"National-team appearances and what they mean for eligibility"],
+  ].map(([k,l,c,t])=>`<button data-v="${k}" title="${esc(t)}"${S.view===k?' class="on"':""}>${esc(l)}<span class="n">${c}</span></button>`).join("");
   $("nav").querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>{
     S.view=b.dataset.v;
     // The nav is a shortcut into the same facet the sidebar exposes, so the two
@@ -599,7 +602,9 @@ function drawNational(){
       .map(([t,n])=>{
         const flag=NATIDS[t]&&CRESTS[NATIDS[t]]
           ?`<img class="cc" src="${esc(CRESTS[NATIDS[t]])}" alt="" loading="lazy">`:"";
-        return `<span class="side ${isYouth(t)?"y":/^egypt/i.test(t)?"eg":"sr"}" title="${esc(t)} — ${n} appearance${n===1?"":"s"}">${flag}${esc(t)}<i>${n}</i></span>`;
+        // natside, not side: aside.side is the sidebar, and one class name for
+        // both meant a sidebar rule could reach in and restyle these badges.
+        return `<span class="natside ${isYouth(t)?"y":/^egypt/i.test(t)?"eg":"sr"}" title="${esc(t)} — ${n} appearance${n===1?"":"s"}">${flag}${esc(t)}<i>${n}</i></span>`;
       }).join("");
   };
   $("body").innerHTML=NATBUCKETS.map(([key,label,note])=>{

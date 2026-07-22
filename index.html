@@ -22,13 +22,16 @@
       <b>Egyptians Abroad</b>
       <span>Scouting Registry</span>
     </div>
-    <nav class="nav" id="nav"></nav>
     <div class="filters" id="filters"></div>
   </aside>
 
   <div class="main">
     <header class="top">
       <button class="tgl menu" id="menu" aria-label="Filters">☰</button>
+      <!-- Views, not filters. In the sidebar they sat above the facets and read
+           as another facet group; a view changes the question the page answers,
+           a facet narrows the answer. -->
+      <nav class="nav" id="nav"></nav>
       <div class="count" id="count">—</div>
       <div class="search">
         <input id="q" type="search" placeholder="Search player, club, country…" aria-label="Search">
