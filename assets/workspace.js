@@ -136,7 +136,21 @@ function blockTitle(p,x){
   const f=matchOf(p,x);
   const bits=[];
   bits.push(x.d||"");
+  // WHICH club he played for. The tooltip named the opponent and never his own
+  // side, so Hossam Abdelmaguid's strip read "home to Enppi SC" while his row
+  // said Ludogorets Razgrad — that match was for Zamalek, before the transfer.
+  //
+  // 14 players' last ten span more than one club, and the reason is usually the
+  // most interesting thing on the row: a reserve-team player turning out for the
+  // first team is the promotion moment a scout is looking for. Shown only when
+  // the side differs from his current club, so the other 149 rows stay terse.
+  if(f&&f.side&&f.side!==p.club)bits.push(`for ${f.side}`);
   if(x.opp)bits.push(`${f&&f.v==="away"?"away at":f?"home to":"vs"} ${x.opp}`);
+  // 19% of blocks have no matching row in form[], so the side, score and venue
+  // are unavailable for them. Say so. Staying silent implies the match was for
+  // his current club, which is exactly the wrong inference on the 14 players
+  // whose recent games span two.
+  if(!f)bits.push("club and score not on record");
   if(f&&f.sc){
     const word=f.r==="W"?"won":f.r==="L"?"lost":f.r==="D"?"drew":"";
     bits.push(`${word} ${f.sc}`.trim());
@@ -165,7 +179,12 @@ function stripHTML(p,n){
   if(!sq.length)return `<span class="strip nostrip" ${w}>—</span>`;
   return `<span class="strip" ${w}>${sq.map(x=>{
     const hit=(x.g||0)+(x.a||0)>0;
-    return `<i class="${x.s}${hit?" hit":""}" title="${esc(blockTitle(p,x))}">${hit?"★":""}</i>`;
+    // A game for a club he has since left is a different fact to a game for his
+    // current one, and reading a whole strip as "his form here" when half of it
+    // was somewhere else is the wrong conclusion. Marked, not hidden.
+    const f=matchOf(p,x);
+    const elsewhere=f&&f.side&&f.side!==p.club;
+    return `<i class="${x.s}${hit?" hit":""}${elsewhere?" prev":""}" title="${esc(blockTitle(p,x))}">${hit?"★":""}</i>`;
   }).join("")}</span>`;
 }
 
@@ -673,7 +692,9 @@ function drawScouting(){
   $("body").innerHTML=`<div class="sclegend">
       <span><i class="P"></i>played</span><span><i class="B"></i>benched</span>
       <span><i class="O"></i>not in squad</span>
-      <span>oldest → newest · hover a block for the match, goals and assists</span></div>`
+      <span><i class="P hit">★</i>scored or assisted</span>
+      <span><i class="P prev"></i>another club</span>
+      <span>oldest → newest · hover a block for the match, score and minutes</span></div>`
     +SCGRP.map(([k,label])=>{
       const g=list.filter(p=>posOf(p)===k);
       if(!g.length)return "";
