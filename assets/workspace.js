@@ -10,13 +10,32 @@ const num=v=>{const n=parseInt(v,10);return isNaN(n)?0:n;};
 
 /* ---------- state ---------- */
 const S={view:"roster",q:"",sort:"name",dir:1,sel:null,
-         f:{track:new Set(),region:new Set(),pos:new Set(),age:new Set(),form:new Set()}};
+         f:{track:new Set(),region:new Set(),club:new Set(),pos:new Set(),age:new Set(),form:new Set()}};
+// A player between clubs is available now and needs no fee — the single most
+// actionable state in the dossier, and previously only findable by searching the
+// words "free agent".
+const isFree=p=>/free agent|without club/i.test(p.club||"");
 
 /* ---------- derived ---------- */
-const GULF=new Set(["Qatar","United Arab Emirates","Saudi Arabia","Kuwait","Bahrain","Oman","Jordan","Iraq"]);
+const GULF=new Set(["Qatar","United Arab Emirates","Saudi Arabia","Kuwait","Bahrain","Oman","Jordan","Iraq",
+  "Syria","Lebanon","Yemen"]);
+// Every European country the crawl reaches. Serbia and the rest of the ex-Yugoslav
+// bloc were added to the crawler today but not here, so nine Serbia-based players
+// fell into "Elsewhere" — a bucket that told a scout nothing.
 const EU=new Set(["Germany","Belgium","England","Switzerland","Spain","France","Greece","Portugal","Turkey",
-  "Italy","Netherlands","Sweden","Austria","Denmark","Norway","Finland","Scotland","Ireland","Poland",
-  "Czech Republic","Slovakia","Cyprus","Romania","Bulgaria","Albania","Hungary","United States"]);
+  "Türkiye","Italy","Netherlands","Sweden","Austria","Denmark","Norway","Finland","Scotland","Ireland",
+  "Poland","Czech Republic","Slovakia","Cyprus","Romania","Bulgaria","Albania","Hungary","Wales",
+  "Serbia","Croatia","Slovenia","Bosnia-Herzegovina","North Macedonia","Montenegro","Kosovo",
+  "Russia","Ukraine","Israel","Iceland","Luxembourg","Malta","Lithuania","Latvia","Estonia"]);
+// The Americas are their own thing, not "European" — that was a two-player
+// convenience in the dossier and it does not survive 151 players.
+const AMER=new Set(["United States","Canada","Mexico","Brazil","Argentina","Uruguay","Chile","Colombia"]);
+// Africa is where Egypt's own continent sits, and Libya and Algeria were landing
+// in "Elsewhere" — the one region a scout for an African federation most needs.
+const AFR=new Set(["Libya","Algeria","Morocco","Tunisia","Sudan","Nigeria","Ghana","South Africa",
+  "Kenya","Senegal","Ivory Coast","Cameroon","Angola","Zambia","Tanzania","Ethiopia","Uganda"]);
+const ASIA=new Set(["Malaysia","Indonesia","Thailand","Japan","South Korea","China","India","Vietnam",
+  "Singapore","Australia","Uzbekistan","Iran","Azerbaijan","Kazakhstan"]);
 // Where he PLAYS, from his club's country. country_crawled records where the
 // crawl found him — empty for 70 of 151 and stale after any transfer — which is
 // why the region filter used to return nothing sensible for Egypt-only players.
@@ -28,6 +47,9 @@ function regionOf(p){
   const c=homeCountry(p);
   if(GULF.has(c))return "gulf";
   if(EU.has(c))return "eu";
+  if(AFR.has(c))return "afr";
+  if(AMER.has(c))return "amer";
+  if(ASIA.has(c))return "asia";
   return "other";
 }
 const POS=[["GK","Goalkeeper"],["DF","Defender"],["MF","Midfield"],["FW","Forward"]];
@@ -75,6 +97,7 @@ function passes(p,skip){
   const f=S.f;
   if(skip!=="track"&&f.track.size&&!f.track.has(p.track))return false;
   if(skip!=="region"&&f.region.size&&!f.region.has(regionOf(p)))return false;
+  if(skip!=="club"&&f.club.size&&!f.club.has(isFree(p)?"free":"signed"))return false;
   if(skip!=="pos"&&f.pos.size&&!f.pos.has(posOf(p)))return false;
   if(skip!=="age"&&f.age.size&&!f.age.has(ageBand(p)))return false;
   if(skip!=="form"&&f.form.size&&!f.form.has(formBand(p)))return false;
@@ -143,8 +166,8 @@ function drawTable(){
         <span>${esc(p.position||"")}${p.national_team?" · "+esc(p.national_team):""}</span></span></span></td>
       <td class="hide-s"><span class="tag ${p.track}">${p.track==="dual"?"Dual":"Egypt only"}</span></td>
       <td class="r num">${esc(p.age||"—")}</td>
-      <td class="hide-s">${crest}${esc(p.club||"—")}
-        ${p.plays_in?`<small class="cn">${esc(p.plays_in)}</small>`:""}</td>
+      <td class="hide-s">${isFree(p)?`<b class="fa">Free agent</b>`:`${crest}${esc(p.club||"—")}`}
+        ${p.plays_in&&!isFree(p)?`<small class="cn">${esc(p.plays_in)}</small>`:""}</td>
       <td class="hide-s">${strip}</td>
       <td class="hide-s">${g?`<span class="sig ${g[0]}">${g[1]}</span>`:`<span class="nostrip">—</span>`}</td>
       <td class="r num">${st.a||0}</td>
@@ -170,6 +193,7 @@ function facet(title,group,opts){
   const body=opts.map(([val,label])=>{
     const n=DATA.filter(p=>passes(p,group)&&({
       track:x=>x.track===val, region:x=>regionOf(x)===val,
+      club:x=>(isFree(x)?"free":"signed")===val,
       pos:x=>posOf(x)===val, age:x=>ageBand(x)===val, form:x=>formBand(x)===val,
     })[group](p)).length;
     return `<label class="opt"><input type="checkbox" data-g="${group}" value="${esc(val)}"${f.has(val)?" checked":""}>
@@ -180,7 +204,9 @@ function facet(title,group,opts){
 function drawFilters(){
   $("filters").innerHTML=
     facet("Track","track",[["dual","Dual nationality"],["single","Egyptian only"]])
-   +facet("Region","region",[["eu","Europe & Americas"],["gulf","Gulf"],["other","Elsewhere"]])
+   +facet("Region","region",[["eu","Europe"],["gulf","Gulf & Middle East"],["afr","Africa"],
+                             ["amer","Americas"],["asia","Asia & Oceania"],["other","Unclassified"]])
+   +facet("Club status","club",[["signed","At a club"],["free","Free agent"]])
    +facet("Position","pos",POS)
    +facet("Age","age",[["u18","18 or under"],["u21","19–21"],["u23","22–23"],["24","24+"]])
    +facet("Club form","form",[["hot","Regular"],["mid","Rotating"],["bench","Benched"],["cold","Out of favour"]])

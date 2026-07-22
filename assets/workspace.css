@@ -122,6 +122,9 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;min-width:940px}
    countries into one bucket, so the specific country is not recoverable from
    them — and "who do we have in Qatar" is a question a scout asks. */
 .cn{display:block;color:var(--mut);font-size:11px;margin-top:2px}
+/* Available now, no fee. Worth its own colour rather than sitting in the club
+   column looking like a club name. */
+.fa{color:var(--warn);font-weight:700}
 /* The strip carries a title on every block; make it feel interactive. */
 .strip i{cursor:help}
 
