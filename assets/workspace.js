@@ -77,7 +77,13 @@ function ageBand(p){
   if(a<=18)return "u18";
   if(a<=21)return "u21";
   if(a<=23)return "u23";
-  return "24";
+  // 24-26 and 27+ rather than one "24+" bucket of 62. A 24-year-old who has not
+  // been capped is still a prospect; a 37-year-old is a different proposition
+  // entirely, and lumping them together made the largest band the least useful
+  // one. The break at 26 is also where the dossier stops, so the two sites agree
+  // on what "still a prospect" means.
+  if(a<=26)return "24";
+  return "27";
 }
 function status(p){ return (MSTATS[p.tm_id]||{}).status||null; }
 
@@ -342,7 +348,8 @@ function drawFilters(){
    +facet("Club status","club",[["signed","At a club"],["free","Free agent"]])
    +facet("International","caps",[["senior","Senior caps"],["youth","Youth only"],["none","Never capped"]])
    +facet("Position","pos",POS)
-   +facet("Age","age",[["u18","18 or under"],["u21","19–21"],["u23","22–23"],["24","24+"]])
+   +facet("Age","age",[["u18","18 or under"],["u21","19–21"],["u23","22–23"],
+                       ["24","24–26"],["27","27 and over"]])
    +facet("Club form","form",[["hot","Regular"],["mid","Rotating"],["bench","Benched"],["cold","Out of favour"]])
    +`<button class="clearf" id="clearf">Clear all filters</button>`;
 
