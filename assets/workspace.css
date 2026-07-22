@@ -176,6 +176,16 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;min-width:940px}
 .strip i{width:9px;height:19px;border-radius:2px;display:block}
 .strip i.P{background:var(--up)} .strip i.B{background:var(--warn)}
 .strip i.O{background:var(--line-2)}
+/* A goal or an assist gets a star. A green block that was a goal is not the same
+   as a green block that was a quiet 90 minutes, and finding that difference is
+   the reason a scout scans this strip at all — it was carried in the tooltip,
+   where you had to already suspect something to go looking for it.
+   Wider, because a 9px column cannot hold a legible glyph. */
+.strip i.hit{width:15px;font:900 10px/19px var(--sans);text-align:center;
+  color:#fff;letter-spacing:0}
+/* On amber and grey the white star has too little contrast to read. */
+.strip i.B.hit{color:#3d2c00}
+.strip i.O.hit{color:var(--ink-2)}
 
 /* National teams — every side a player has appeared for, on his own row. The
    view groups by what his caps MEAN (cap-tied / committed / still open), so the

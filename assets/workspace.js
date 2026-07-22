@@ -120,6 +120,50 @@ function formBand(p){
   return g?g[0]:"";
 }
 
+/* ---------- the squad strip ---------- */
+// One builder, used by the roster, Scouting mode and Fixtures. The three had
+// three different tooltips saying three different amounts about the same match.
+//
+// squad[] carries date, competition, opponent, minutes, goals and assists.
+// form[] carries the SCORE, the result and the venue for the same fixture and
+// nothing was reading it — 80% of blocks match on date, so the hover can say
+// "won 2-1 away" instead of leaving the reader to guess how the game went.
+function matchOf(p,x){
+  const f=(MSTATS[p.tm_id]||{}).form||[];
+  return f.find(z=>z.fd===x.d)||null;
+}
+function blockTitle(p,x){
+  const f=matchOf(p,x);
+  const bits=[];
+  bits.push(x.d||"");
+  if(x.opp)bits.push(`${f&&f.v==="away"?"away at":f?"home to":"vs"} ${x.opp}`);
+  if(f&&f.sc){
+    const word=f.r==="W"?"won":f.r==="L"?"lost":f.r==="D"?"drew":"";
+    bits.push(`${word} ${f.sc}`.trim());
+  }
+  if(x.cn)bits.push(x.cn);
+  // Minutes: TM publishes the fixture before the minutes, so "0'" would be a
+  // contradiction rather than a fact.
+  bits.push(x.s==="P"?(x.min?`${x.min}' played`:"played — minutes not published yet")
+           :x.s==="B"?"unused sub":"not in squad");
+  const ret=[];
+  if(x.g)ret.push(`${x.g} goal${x.g>1?"s":""}`);
+  if(x.a)ret.push(`${x.a} assist${x.a>1?"s":""}`);
+  if(ret.length)bits.push(ret.join(", "));
+  return bits.filter(Boolean).join(" · ");
+}
+// A goal or an assist gets a star. A green block that was a goal is not the same
+// as a green block that was a quiet 90 minutes, and scanning for the difference
+// is the entire reason a scout reads this strip.
+function stripHTML(p,n){
+  const sq=((MSTATS[p.tm_id]||{}).squad||[]).slice(0,n).slice().reverse();
+  if(!sq.length)return `<span class="nostrip">—</span>`;
+  return `<span class="strip">${sq.map(x=>{
+    const hit=(x.g||0)+(x.a||0)>0;
+    return `<i class="${x.s}${hit?" hit":""}" title="${esc(blockTitle(p,x))}">${hit?"★":""}</i>`;
+  }).join("")}</span>`;
+}
+
 /* ---------- filtering ---------- */
 function hits(p){
   const q=S.q.trim().toLowerCase();
@@ -211,16 +255,7 @@ function drawTable(){
     // Oldest left, newest right. Each block names the match, the competition and
     // what he did — the strip is unreadable without it, since a green block that
     // was a goal looks identical to a quiet 90 minutes.
-    const sq=(m.squad||[]).slice(0,10).slice().reverse();
-    const did=x=>x.s==="P"?(x.min?`${x.min}' played`:"played")
-              :x.s==="B"?"unused sub":"not in squad";
-    const ret=x=>[(x.g?x.g+"G":""),(x.a?x.a+"A":"")].filter(Boolean).join(" ");
-    const strip=sq.length
-      ? `<span class="strip">${sq.map(x=>{
-          const r=ret(x);
-          return `<i class="${x.s}" title="${esc(x.d||"")} ${esc(x.cn||"")}${x.opp?" vs "+esc(x.opp):""} — ${esc(did(x))}${r?" · "+esc(r):""}"></i>`;
-        }).join("")}</span>`
-      : `<span class="nostrip">—</span>`;
+    const strip=stripHTML(p,10);
     const g=signal(p);
     const st=p.st||{};
     return `<tr data-id="${esc(p.tm_id)}"${S.sel===p.tm_id?' class="sel"':""}>
@@ -492,10 +527,7 @@ function drawFixtures(){
   const body=list.map(p=>{
     const f=NEXTM[p.tm_id], m=MSTATS[p.tm_id]||{};
     const crest=CRESTS[f.oid]?`<img class="cc" src="${esc(CRESTS[f.oid])}" alt="" loading="lazy">`:"";
-    const sq=(m.squad||[]).slice(0,6).slice().reverse();
-    const strip=sq.length?`<span class="strip">${sq.map(x=>
-      `<i class="${x.s}" title="${esc(x.d||"")} — ${x.s==="P"?"played":x.s==="B"?"unused sub":"not in squad"}"></i>`).join("")}</span>`
-      :`<span class="nostrip">—</span>`;
+    const strip=stripHTML(p,6);
     const g=signal(p);
     return `<tr data-id="${esc(p.tm_id)}">
       <td><span class="who">${p.photo?`<img class="face" src="${esc(p.photo)}" alt="" loading="lazy">`
@@ -605,24 +637,16 @@ function drawScouting(){
     $("body").innerHTML=`<div class="empty"><b>Nobody matches</b>No player in this filter has recent club match data.</div>`;
     return;
   }
-  // TM posts a fixture before its minutes, so "0' played" would be a
-  // contradiction rather than a fact — say the minutes are pending instead.
-  const did=x=>x.s==="P"?(x.min?`${x.min}' played`:"played — minutes not published yet")
-            :x.s==="B"?"unused sub":"not in squad";
-  const ret=x=>{const b=[];if(x.g)b.push(x.g+(x.g>1?" goals":" goal"));
-                if(x.a)b.push(x.a+(x.a>1?" assists":" assist"));
-                return b.length?" · "+b.join(", "):"";};
   const row=p=>{
     const m=MSTATS[p.tm_id]||{}, s=m.status||{}, g=signal(p);
-    const strip=(m.squad||[]).slice(0,10).slice().reverse().map(x=>
-      `<i class="${x.s}" title="${esc(x.d||"")} ${esc(x.cn||"")}${x.opp?" vs "+esc(x.opp):""} — ${esc(did(x))}${esc(ret(x))}"></i>`).join("");
+    const strip=stripHTML(p,10);
     const ga=(s.g||s.a)?`${s.g?s.g+"G":""}${s.g&&s.a?" ":""}${s.a?s.a+"A":""}`:"—";
     const crest=CRESTS[p.club_id]?`<img class="cc" src="${esc(CRESTS[p.club_id])}" alt="" loading="lazy">`:"";
     return `<tr data-id="${esc(p.tm_id)}">
       <td><span class="who">${p.photo?`<img class="face" src="${esc(p.photo)}" alt="" loading="lazy">`
         :`<span class="face ini">${esc(initials(p.name))}</span>`}<span class="nm"><b>${esc(p.name)}</b>
         <span>${esc(p.age||"")} · ${crest}${esc(p.club||"")}</span></span></span></td>
-      <td><span class="strip">${strip||""}</span></td>
+      <td>${strip}</td>
       <td class="hide-s tally"><b>${s.played||0}</b> played · ${s.bench||0} bench · ${s.out||0} out</td>
       <td class="r num hide-s">${esc(ga)}</td>
       <td class="c">${g?`<span class="sig ${g[0]}">${g[1]}</span>`:`<span class="nostrip">—</span>`}</td>
