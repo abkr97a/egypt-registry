@@ -221,6 +221,25 @@ function drawFilters(){
 }
 
 /* ---------- render: detail panel ---------- */
+// Newest first, matching Transfermarkt and every other list on this page. The
+// store keeps them oldest-first, so the panel opened on a move from 2016 while
+// the row above it showed the player's situation today.
+//
+// The fee is the useful column and was not shown at all: "Free Transfer" and
+// "loan transfer" are the difference between a signing and a temporary move, and
+// a scout reads the list to find exactly that.
+function trBlock(p){
+  const tr=(p.tr||[]).slice().reverse();
+  if(!tr.length)return `<div class="prow"><span>No transfer record</span><b></b></div>`;
+  return `<table class="mtable">${tr.slice(0,8).map(t=>{
+    const fee=(t.fee||"").trim();
+    const free=/free|loan|end of/i.test(fee);
+    return `<tr>
+      <td class="d">${esc(t.date||"")}</td>
+      <td class="o">${esc(t.from||"?")} <span class="arr">→</span> <b>${esc(t.to||"?")}</b></td>
+      <td class="r">${fee&&fee!=="-"&&fee!=="?"?`<span class="fee${free?" f":""}">${esc(fee)}</span>`:""}</td>
+    </tr>`;}).join("")}</table>`;
+}
 function openPanel(id){
   const p=DATA.find(x=>x.tm_id===id); if(!p)return;
   S.sel=id;
@@ -266,8 +285,8 @@ function openPanel(id){
         <div class="prow"><span>${esc(nx.date||"")}${nx.time?" "+esc(nx.time):""}</span><b>${esc(nx.opp||"")}</b></div>`:""}
       ${form?`<div class="psec">Recent club matches</div><table class="mtable">${form}</table>`:""}
       ${traj}
-      <div class="psec">Transfers</div>
-      ${(p.tr||[]).slice(0,6).map(t=>`<div class="prow"><span>${esc(t.date||"")}</span><b>${esc(t.from||"")} → ${esc(t.to||"")}</b></div>`).join("")||`<div class="prow"><span>No transfer record</span><b></b></div>`}
+      <div class="psec">Transfer history</div>
+      ${trBlock(p)}
     </div>`;
   $("panel").classList.add("open");
   $("scrim").classList.add("on");

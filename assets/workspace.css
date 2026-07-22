@@ -125,6 +125,11 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;min-width:940px}
 /* Available now, no fee. Worth its own colour rather than sitting in the club
    column looking like a club name. */
 .fa{color:var(--warn);font-weight:700}
+/* Transfer rows: the destination is what matters, so the club left is quiet and
+   the club joined is bold. */
+.arr{color:var(--mut);margin:0 3px}
+.fee{font:600 10.5px/1 var(--mono);color:var(--ink-2);white-space:nowrap}
+.fee.f{color:var(--mut)}          /* free / loan — no money moved */
 /* The strip carries a title on every block; make it feel interactive. */
 .strip i{cursor:help}
 
