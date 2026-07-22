@@ -414,42 +414,148 @@ function openPanel(id){
   $("panel").classList.add("open");
   $("scrim").classList.add("on");
   $("pclose").onclick=closePanel;
-  drawTable();
+  // drawBody, not drawTable: opening a player from the Fixtures or National view
+  // must redraw the view you are in, not silently swap it for the roster.
+  drawBody();
 }
 function closePanel(){
   S.sel=null;
   $("panel").classList.remove("open");
   $("scrim").classList.remove("on");
-  drawTable();
+  drawBody();
 }
 
 /* ---------- shell ---------- */
+// Roster/dual/single are three cuts of ONE table, driven by the track facet.
+// Fixtures and National teams are different questions about the same players and
+// draw their own body. Keeping the distinction explicit stops the nav from
+// pretending a view is a filter or the reverse.
+const TRACKVIEWS=new Set(["roster","dual","single"]);
 function drawNav(){
   const n=DATA.length, dual=DATA.filter(p=>p.track==="dual").length;
+  const withFix=DATA.filter(p=>NEXTM[p.tm_id]).length;
+  const withNat=DATA.filter(p=>((MSTATS[p.tm_id]||{}).natl||[]).length).length;
   $("nav").innerHTML=[
     ["roster","Roster",n],
     ["dual","Dual nationality",dual],
     ["single","Egyptian only",n-dual],
+    ["fix","Fixtures",withFix],
+    ["nat","National teams",withNat],
   ].map(([k,l,c])=>`<button data-v="${k}"${S.view===k?' class="on"':""}>${esc(l)}<span class="n">${c}</span></button>`).join("");
   $("nav").querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>{
     S.view=b.dataset.v;
     // The nav is a shortcut into the same facet the sidebar exposes, so the two
     // can never show different things.
-    S.f.track.clear();
-    if(S.view!=="roster")S.f.track.add(S.view);
+    if(TRACKVIEWS.has(S.view)){
+      S.f.track.clear();
+      if(S.view!=="roster")S.f.track.add(S.view);
+    }
     draw();
   });
 }
-function draw(){ drawNav(); drawFilters(); drawTable(); }
+
+/* ---------- view: fixtures ---------- */
+// Where each player's club goes next. The fixture is the CLUB's game — it says
+// they play on Saturday, not that he is picked — so the squad strip sits beside
+// it. That pairing is the whole point: a next fixture without recent squad status
+// tells a scout nothing about whether to watch it.
+function drawFixtures(){
+  const list=rows().filter(p=>NEXTM[p.tm_id]);
+  $("count").innerHTML=`${list.length}<small>with a fixture</small>`;
+  if(!list.length){
+    $("body").innerHTML=`<div class="empty"><b>No upcoming fixtures</b>Leagues publish 26/27 dates at different times, so this fills in through pre-season.</div>`;
+    return;
+  }
+  const body=list.map(p=>{
+    const f=NEXTM[p.tm_id], m=MSTATS[p.tm_id]||{};
+    const crest=CRESTS[f.oid]?`<img class="cc" src="${esc(CRESTS[f.oid])}" alt="" loading="lazy">`:"";
+    const sq=(m.squad||[]).slice(0,6).slice().reverse();
+    const strip=sq.length?`<span class="strip">${sq.map(x=>
+      `<i class="${x.s}" title="${esc(x.d||"")} — ${x.s==="P"?"played":x.s==="B"?"unused sub":"not in squad"}"></i>`).join("")}</span>`
+      :`<span class="nostrip">—</span>`;
+    const g=signal(p);
+    return `<tr data-id="${esc(p.tm_id)}">
+      <td><span class="who">${p.photo?`<img class="face" src="${esc(p.photo)}" alt="" loading="lazy">`
+        :`<span class="face ini">${esc(initials(p.name))}</span>`}<span class="nm"><b>${esc(p.name)}</b>
+        <span>${esc(p.club||"")}</span></span></span></td>
+      <td class="hide-s"><b>${esc(f.date||"—")}</b><small class="cn">${esc(f.time||"")}</small></td>
+      <td>${f.ha==="H"?'<span class="tag">Home</span>':'<span class="tag">Away</span>'} ${crest}${esc(f.opp||"—")}</td>
+      <td class="hide-s">${strip}</td>
+      <td class="hide-s">${g?`<span class="sig ${g[0]}">${g[1]}</span>`:`<span class="nostrip">—</span>`}</td></tr>`;
+  }).join("");
+  $("body").innerHTML=`<table class="grid"><thead><tr>
+    <th>Player</th><th class="hide-s">Kick-off</th><th>Opponent</th>
+    <th class="hide-s">Last 6</th><th class="hide-s">Signal</th></tr></thead><tbody>${body}</tbody></table>`;
+  $("body").querySelectorAll("tr[data-id]").forEach(tr=>tr.onclick=()=>openPanel(tr.dataset.id));
+}
+
+/* ---------- view: national teams ---------- */
+// Grouped by the side, not by the player, because the question this answers is
+// "who is in which system" — an Egypt U20 list is a squad, a France U17 list is a
+// warning. Senior sides for another country come first: those are the players
+// whose eligibility is closing.
+function drawNational(){
+  const list=rows().filter(p=>((MSTATS[p.tm_id]||{}).natl||[]).length);
+  $("count").innerHTML=`${list.length}<small>with caps</small>`;
+  if(!list.length){
+    $("body").innerHTML=`<div class="empty"><b>Nobody matches</b>No player in this filter has a national-team appearance.</div>`;
+    return;
+  }
+  const by=new Map();
+  list.forEach(p=>{
+    const seen=new Set();
+    ((MSTATS[p.tm_id]||{}).natl||[]).filter(x=>x.part==="P").forEach(x=>{
+      const t=(x.team||"").trim(); if(!t||seen.has(t))return;
+      seen.add(t);
+      if(!by.has(t))by.set(t,[]);
+      by.get(t).push(p);
+    });
+  });
+  // Senior non-Egypt first (eligibility at risk), then senior Egypt, then youth.
+  const rank=t=>isYouth(t)?2:/^egypt/i.test(t)?1:0;
+  const groups=[...by.entries()].sort((a,b)=>
+    rank(a[0])-rank(b[0])||b[1].length-a[1].length||a[0].localeCompare(b[0]));
+
+  $("body").innerHTML=groups.map(([team,ps])=>{
+    const youth=isYouth(team), egy=/^egypt/i.test(team);
+    const note=youth?"youth — does not cap-tie":egy?"senior — committed to Egypt":"senior — cap-tied under Article 9";
+    const flag=NATIDS[team]&&CRESTS[NATIDS[team]]
+      ?`<img class="cc" src="${esc(CRESTS[NATIDS[team]])}" alt="" loading="lazy">`:"";
+    return `<div class="ntgrp">
+      <div class="ntgh"><b class="${youth?"y":egy?"eg":"sr"}">${flag}${esc(team)}</b>
+        <span>${ps.length} player${ps.length===1?"":"s"} · ${esc(note)}</span></div>
+      <table class="grid"><tbody>${ps.map(p=>{
+        const c=caps(p);
+        return `<tr data-id="${esc(p.tm_id)}">
+          <td><span class="who">${p.photo?`<img class="face" src="${esc(p.photo)}" alt="" loading="lazy">`
+            :`<span class="face ini">${esc(initials(p.name))}</span>`}<span class="nm"><b>${esc(p.name)}</b>
+            <span>${esc(p.position||"")} · ${esc(p.club||"")}</span></span></span></td>
+          <td class="r num hide-s">${esc(p.age||"—")}</td>
+          <td class="r">${capsCell(p)}</td></tr>`;}).join("")}</tbody></table></div>`;
+  }).join("");
+  $("body").querySelectorAll("tr[data-id]").forEach(tr=>tr.onclick=()=>openPanel(tr.dataset.id));
+}
+
+function drawBody(){
+  if(S.view==="fix")return drawFixtures();
+  if(S.view==="nat")return drawNational();
+  drawTable();
+}
+function draw(){ drawNav(); drawFilters(); drawBody(); }
 
 async function boot(){
   const load=n=>fetch(`data/${n}.json`).then(r=>r.json()).catch(()=>({}));
   [DATA,MSTATS,CRESTS,NEXTM,NATIDS]=await Promise.all(
     ["data","mstats","crests","nextm","natids"].map(load));
-  DATA=(DATA||[]).filter(p=>p.status!=="CAP_TIED_ELSEWHERE");
+  // Copied from the dossier, where hiding a cap-tied player is right: that site
+  // lists who Egypt can still sign. Here it is wrong. This registry answers "who
+  // is out there at all", and a player cap-tied to Qatar is still an Egyptian
+  // abroad — the International facet already says so, in a column built for it.
+  // Left in, the filter made the file say 172 and the page say 170.
+  DATA=DATA||[];
   draw();
 
-  $("q").oninput=e=>{S.q=e.target.value;drawTable();drawFilters();};
+  $("q").oninput=e=>{S.q=e.target.value;drawBody();drawFilters();};
   $("scrim").onclick=closePanel;
   $("menu").onclick=()=>$("side").classList.toggle("open");
   document.addEventListener("keydown",e=>{ if(e.key==="Escape")closePanel(); });
