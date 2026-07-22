@@ -203,20 +203,37 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;min-width:940px}
    ten blocks inside the same column. */
 .strip i{width:12px;height:19px;border-radius:2px;display:block;flex:none}
 .strip i.P{background:var(--up)} .strip i.B{background:var(--warn)}
-.strip i.O{background:var(--line-2)}
+/* "Not in squad" is an absence and should read as one — but --line-2 sat so close
+   to the row background that a strip of eight outs looked like empty space where
+   blocks failed to render, rather than like eight matches he was left out of.
+   Lifted, and given an inset edge so the block has a definite boundary. */
+.strip i.O{background:var(--line-2);box-shadow:inset 0 0 0 1px rgba(127,140,160,.35)}
 /* A goal or an assist gets a star. A green block that was a goal is not the same
    as a green block that was a quiet 90 minutes, and finding that difference is
    the reason a scout scans this strip at all — it was carried in the tooltip,
    where you had to already suspect something to go looking for it.
    Wider, because a 9px column cannot hold a legible glyph. */
-.strip i.hit{font:900 9px/19px var(--sans);text-align:center;color:#fff;letter-spacing:0}
-/* Played for a different club — a reserve side, or one he has since left. Hollowed
-   rather than recoloured: the block still has to read as played/benched/out at a
-   glance, and a fourth colour would compete with that. The hover names the club. */
-.strip i.prev{opacity:.55;box-shadow:inset 0 0 0 1.5px var(--surface)}
+/* The star sits on a 12px block, so it needs weight rather than size to read.
+   A dark glyph on the green holds up better than white at this scale — white on
+   --up greyed out at a glance and the star stopped being scannable, which was
+   its whole purpose. */
+.strip i.hit{font:900 11px/19px var(--sans);text-align:center;letter-spacing:0;
+  color:rgba(0,0,0,.62);text-shadow:0 0 1px rgba(255,255,255,.35)}
+/* Played for a different club — a reserve side, or one he has since left. Marked
+   by a notch cut from the bottom corner, not by opacity: fading it made the block
+   read as "less certain", and the ring in --surface disappeared entirely against
+   the striped row backgrounds it was supposed to contrast with. The state colour
+   stays at full strength, because played/benched/out is still the primary fact
+   and a second signal must not weaken the first. The hover names the club. */
+.strip i.prev{clip-path:polygon(0 0,100% 0,100% 62%,58% 100%,0 100%)}
+/* 41 blocks are both starred and for another club. The notch takes the bottom
+   corner, so the centred star has to ride above it or it loses a leg. */
+.strip i.prev.hit{line-height:15px;font-size:10px}
 /* On amber and grey the white star has too little contrast to read. */
-.strip i.B.hit{color:#3d2c00}
-.strip i.O.hit{color:var(--ink-2)}
+/* No per-state overrides: the dark glyph reads on both green and amber, and all
+   139 starred blocks are "played" anyway — you cannot score from outside the
+   squad. Kept only as a safety net if that ever stops being true. */
+.strip i.O.hit{color:var(--ink)}
 
 /* National teams — every side a player has appeared for, on his own row. The
    view groups by what his caps MEAN (cap-tied / committed / still open), so the
@@ -244,8 +261,9 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;min-width:940px}
 .sclegend i{width:12px;height:14px;border-radius:2px;display:inline-block}
 .sclegend i.P{background:var(--up)} .sclegend i.B{background:var(--warn)}
 .sclegend i.O{background:var(--line-2)}
-.sclegend i.hit{font:900 9px/14px var(--sans);text-align:center;color:#fff}
-.sclegend i.prev{opacity:.55;box-shadow:inset 0 0 0 1.5px var(--surface)}
+.sclegend i.hit{font:900 10px/14px var(--sans);text-align:center;color:rgba(0,0,0,.62)}
+.sclegend i.prev{clip-path:polygon(0 0,100% 0,100% 62%,58% 100%,0 100%)}
+.sclegend i.O{box-shadow:inset 0 0 0 1px rgba(127,140,160,.35)}
 .scgrp{margin-bottom:26px}
 .scgrp .ntgh{margin-bottom:8px}
 .scgrp .ntgh span{font:700 10px/1 var(--sans);background:var(--line);
