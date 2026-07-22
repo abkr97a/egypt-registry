@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Egyptians Abroad — The Full Registry</title>
+<meta name="description" content="Every footballer eligible for Egypt playing outside the country — dual and single nationality — with live squad status, form and market value. Built from public football data across 38 countries.">
+<meta name="author" content="AbdelRahman Mohammed">
+<meta name="robots" content="index, follow">
+
+<!-- Open Graph (LinkedIn / Facebook) -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Egyptians Abroad — The Full Registry">
+<meta property="og:description" content="Every Egypt-eligible footballer playing abroad, with live form and squad status. A reference, updated daily.">
+<meta property="og:url" content="https://abkr97a.github.io/egypt-registry/">
+<meta property="og:locale" content="en_US">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Egyptians Abroad — The Full Registry">
+<meta name="twitter:description" content="Every Egypt-eligible footballer playing abroad, with live form and squad status.">
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9A%BD%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+<link rel="stylesheet" href="assets/app.css">
+
+<section class="hero">
+  <div class="hero-in">
+    <div class="hero-text">
+      <div class="kick"><div class="glyphrule"><span class="g">★ ★ ★</span></div>
+        <div class="eyebrow">Egyptian Football &middot; The Full Registry <span class="ar">سجل المحترفين</span></div></div>
+      <h1>Egyptians<span class="em">Abroad.</span></h1>
+      <p class="lede">Every footballer eligible to play for Egypt who plays outside it &mdash; the diaspora
+      raised in foreign academies, and the professionals who left the Egyptian league.
+      <b>One list, rebuilt every morning, with what each of them actually did last weekend.</b></p>
+      <div class="scroll"><span class="dot"></span> Enter the registry</div>
+    </div>
+  </div>
+</section>
+
+<section class="story sec">
+  <div class="storygrid">
+    <div>
+      <div class="glyphrule"><span class="g">⚽</span></div>
+      <div class="eyebrow" style="margin-bottom:16px">Why it exists <span class="ar">الفكرة</span></div>
+      <div class="pullquote">Nobody publishes a list of <span class="em">every Egyptian playing abroad.</span>
+      <small>Not the federation, not Transfermarkt, not Wikipedia. There are lists of the famous ones and
+      lists of the ones who declared, but no single place that answers &ldquo;who is out there, and is he
+      playing?&rdquo; This is that list &mdash; built by reading 38 countries&rsquo; leagues one squad at a time.</small></div>
+    </div>
+    <div class="timeline">
+      <div class="tl"><div class="yr">Two tracks</div><div class="ev"><b>Dual nationality</b>Raised abroad, holding an Egyptian passport alongside another. Often unknown to the federation.</div></div>
+      <div class="tl"><div class="yr">&nbsp;</div><div class="ev"><b>Egyptian only</b>Came through the Egyptian system and moved abroad. Known, but rarely tracked week to week.</div></div>
+      <div class="tl"><div class="yr">Daily</div><div class="ev"><b>Squad status</b>Started, benched, or left out &mdash; for every player, every matchday.</div></div>
+      <div class="tl"><div class="yr">Article 9</div><div class="ev"><b>Eligibility</b>Who can still be selected, under FIFA&rsquo;s switching rules.</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="band"><div class="sec"><div class="bandgrid">
+  <div class="bstat"><b>38</b><span>countries&rsquo; leagues swept</span></div>
+  <div class="bstat"><b>73k+</b><span>players read, one by one</span></div>
+  <div class="bstat"><b id="b-total">&mdash;</b><span>Egyptians abroad</span></div>
+  <div class="bstat"><b id="b-dual">&mdash;</b><span>dual nationality</span></div>
+</div></div></section>
+
+<nav class="vtabs" id="vtabs" role="tablist">
+  <button class="vtab on" data-v="list" role="tab">The registry <span class="vc" id="vc-list"></span></button>
+  <button class="vtab" data-v="scout" role="tab">Scouting mode <span class="vc" id="vc-scout"></span></button>
+  <button class="vtab" data-v="fix" role="tab">Fixtures <span class="vc" id="vc-fix"></span></button>
+  <button class="vtab" data-v="nat" role="tab">National teams <span class="vc" id="vc-nat"></span></button>
+</nav>
+
+<section class="sec" id="view-list">
+  <div class="glyphrule"><span class="g">★ ★ ★</span></div>
+  <div class="eyebrow" style="margin-bottom:14px">The registry <span class="ar">السجل</span></div>
+  <h2 style="font-size:clamp(28px,4.4vw,44px)">Every Egyptian playing abroad.</h2>
+  <p style="max-width:64ch;color:var(--muted);margin-top:12px">Both tracks together: those who hold a second
+  passport and those who hold only an Egyptian one. Tap any card for the full record &mdash; pitch role,
+  career figures, transfer path and market value.</p>
+  <div class="filterbar">
+    <div class="filters" id="filters"></div>
+    <div class="fxsearch"><input id="plq" type="search" placeholder="Search player, club or country…" aria-label="Search players"></div>
+  </div>
+  <div class="grid" id="grid"></div>
+</section>
+
+<section class="scouting sec" id="scouting">
+  <div class="glyphrule"><span class="g">&#9733;</span></div>
+  <div class="eyebrow" style="margin-bottom:14px">Scouting mode <span class="ar">&#1605;&#1578;&#1575;&#1576;&#1593;&#1577;</span></div>
+  <h2 style="font-size:clamp(26px,4vw,38px)">Who is actually playing.</h2>
+  <p style="max-width:66ch;color:var(--muted);margin-top:12px">Squad status across each player&rsquo;s last ten
+  <b>club</b> matchdays &mdash; started, benched, or left out entirely. A run of grey says more about a
+  player&rsquo;s standing than any career total. National-team call-ups are excluded so they don&rsquo;t
+  read as club selections.</p>
+  <div class="filterbar">
+    <div class="scfilters" id="scregion"></div>
+    <div class="fxsearch"><input id="scq" type="search" placeholder="Search player, club or country…" aria-label="Search players"></div>
+  </div>
+  <div class="sclegend" id="sclegend"></div>
+  <div id="scgroups"></div>
+</section>
+
+<section class="fixtures sec vhide" id="view-fix">
+  <div class="glyphrule"><span class="g">&#9733;</span></div>
+  <div class="eyebrow" style="margin-bottom:14px">Fixtures <span class="ar">&#1575;&#1604;&#1605;&#1576;&#1575;&#1585;&#1610;&#1575;&#1578;</span></div>
+  <h2 style="font-size:clamp(26px,4vw,38px)">Last match, next match.</h2>
+  <p style="max-width:66ch;color:var(--muted);margin-top:12px">Where each player has just been and where his club goes next.
+  The fixture is the <b>club&rsquo;s</b> game &mdash; it says they play on Saturday, not that he is picked; read it against his
+  squad status under Scouting mode. Blank where a league has not published 26/27 dates yet.</p>
+  <div class="filterbar">
+    <div class="scfilters" id="fxregion"></div>
+    <div class="fxsearch"><input id="fxq" type="search" placeholder="Search player, club or country…" aria-label="Search players"></div>
+  </div>
+  <div class="scfilters" id="fxpos"></div>
+  <div id="fixtures"></div>
+</section>
+
+<section class="natteams sec vhide" id="view-nat">
+  <div class="glyphrule"><span class="g">&#9733;</span></div>
+  <div class="eyebrow" style="margin-bottom:14px">National teams <span class="ar">&#1575;&#1604;&#1605;&#1606;&#1578;&#1582;&#1576;&#1575;&#1578;</span></div>
+  <h2 style="font-size:clamp(26px,4vw,38px)">Who is in a national setup.</h2>
+  <p style="max-width:66ch;color:var(--muted);margin-top:12px">Under FIFA Article&nbsp;9 a youth cap ties nobody:
+  a player in another country&rsquo;s U23 side can still choose Egypt. Only a <b>senior competitive</b> cap closes
+  the door. The split that matters is who the EFA is already developing, who another federation is developing,
+  and who nobody has called at all.</p>
+  <div class="filterbar">
+    <div class="scfilters" id="natfilters"></div>
+    <div class="fxsearch"><input id="natq" type="search" placeholder="Search player, club or country…" aria-label="Search players"></div>
+  </div>
+  <div id="natgroups"></div>
+</section>
+
+<section class="analytics sec">
+  <div class="glyphrule"><span class="g">★</span></div>
+  <div class="eyebrow" style="margin-bottom:14px">The pool at a glance <span class="ar">تحليل</span></div>
+  <h2 style="font-size:clamp(26px,4vw,38px)">Who they are, where they play.</h2>
+  <div class="achips" id="achips"></div>
+  <div class="agrid">
+    <div class="acard"><div class="ct">Age</div><div id="c-age"></div></div>
+    <div class="acard"><div class="ct">Position</div><div id="c-pos"></div></div>
+    <div class="acard"><div class="ct">Country</div><div id="c-ctry"></div></div>
+    <div class="acard"><div class="ct">League tier</div><div id="c-tier"></div></div>
+  </div>
+</section>
+
+<footer class="foot sec">
+  <div class="glyphrule"><span class="g">★ ★ ★</span></div>
+  <p>Built from public football data across 38 countries, classified by FIFA Article&nbsp;9.
+  Rebuilt every morning. <a href="https://abkr97a.github.io/egypt-scouting/">Sons of the Nile</a> is the
+  companion dossier &mdash; dual-nationality players only, the ones the federation is most likely to have missed.</p>
+  <p class="fine">AbdelRahman Mohammed &middot; <span id="f-count">&mdash;</span> players &middot; data from public sources</p>
+</footer>
+
+<div class="sheet" id="sheet" hidden></div>
+<script src="assets/app.js"></script>
+</body>
+</html>

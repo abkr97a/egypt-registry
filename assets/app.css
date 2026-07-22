@@ -1,0 +1,687 @@
+:root{
+  /* EGYPT NATIONAL TEAM identity: red / white / black kit */
+  --red:#c8102e; --red-deep:#9a0f24; --red-soft:#e23a52;
+  --gold:#c8102e; --gold-dim:#9a0f24; --gold-soft:#e23a52;  /* accents map to red now */
+  --lapis:#111417; --lapis-lt:#1d2329;                      /* deep charcoal, not blue */
+  --stone:#ffffff;          /* white kit base */
+  --stone-2:#f7f4f2;        /* faint warm-grey panel */
+  --papyrus:#151312;        /* near-black TEXT on white (was the low-contrast cream) */
+  --ink:#151312;            /* primary text */
+  --sand:#4a4442;           /* secondary text — dark, readable */
+  --muted:#7a726e;          /* tertiary text */
+  --line:#e6e0dc;
+  --line-lt:#e6e0dc;
+  --disp:"Arial Narrow","Helvetica Neue Condensed",ui-sans-serif,system-ui,sans-serif;
+  --sans:ui-sans-serif,system-ui,"Segoe UI",Roboto,sans-serif;
+  --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,monospace;
+  --up:#1f9d57;
+}
+/* dark theme = stadium-night; text goes light but never pure muddy cream */
+:root[data-theme="dark"]{
+  --stone:#141110; --stone-2:#201b19; --papyrus:#f4efec; --ink:#f4efec;
+  --sand:#c7bdb8; --muted:#9a8f89; --line:#312a27; --line-lt:#312a27;
+  --gold:#e23a52; --gold-dim:#c8102e; --gold-soft:#f06073;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --stone:#141110; --stone-2:#201b19; --papyrus:#f4efec; --ink:#f4efec;
+  --sand:#c7bdb8; --muted:#9a8f89; --line:#312a27; --line-lt:#312a27;
+  --gold:#e23a52; --gold-dim:#c8102e; --gold-soft:#f06073;
+}}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--stone);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+:root[data-theme="light"] body,@media (prefers-color-scheme:light){:root:not([data-theme="dark"]) body{color:var(--ink)}}
+.sec{max-width:1140px;margin:0 auto;padding:80px 24px}
+h1,h2,h3{font-family:var(--disp);font-weight:800;letter-spacing:.02em;text-transform:uppercase;text-wrap:balance;margin:0;font-stretch:condensed}
+
+/* section divider */
+.glyphrule{display:flex;align-items:center;gap:14px;color:var(--gold);opacity:.8;margin:0 0 6px}
+.glyphrule::before,.glyphrule::after{content:"";height:1px;flex:1;background:linear-gradient(90deg,transparent,var(--gold-dim),transparent)}
+.glyphrule .g{font-size:15px;letter-spacing:.3em}
+.eyebrow{font:800 12px/1 var(--sans);letter-spacing:.32em;text-transform:uppercase;color:var(--gold);display:flex;gap:12px;align-items:center}
+.eyebrow .ar{opacity:.7;letter-spacing:.05em;font-weight:600}
+
+/* ---------- HERO ---------- */
+.hero{position:relative;overflow:hidden;background:#111417;border-bottom:3px solid var(--red)}
+.hero::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:
+    radial-gradient(130% 90% at 80% 6%,rgba(200,16,46,.42),transparent 55%),
+    radial-gradient(90% 120% at 8% 100%,rgba(200,16,46,.14),transparent 48%),
+    repeating-linear-gradient(90deg,transparent 0 60px,rgba(255,255,255,.02) 60px 61px)}
+.hero-in{max-width:1140px;margin:0 auto;padding:96px 24px 84px;position:relative;
+  display:grid;grid-template-columns:1.15fr .85fr;gap:48px;align-items:center}
+@media(max-width:860px){.hero-in{grid-template-columns:1fr;gap:34px}}
+.hero-text{min-width:0}
+.hero-photo{margin:0;position:relative;opacity:0;animation:rise .9s .5s forwards}
+.hero-photo img{width:100%;aspect-ratio:16/11;object-fit:cover;object-position:center 22%;border-radius:14px;
+  border:2px solid rgba(200,16,46,.5);box-shadow:0 30px 70px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.06);
+  display:block;background:#1a0d10}
+.hero-photo::after{content:"";position:absolute;inset:0;border-radius:14px;pointer-events:none;
+  background:linear-gradient(180deg,transparent 55%,rgba(15,10,12,.55) 100%),radial-gradient(80% 60% at 70% 10%,rgba(200,16,46,.25),transparent 60%);mix-blend-mode:normal}
+.hero-photo figcaption{margin-top:12px;font:600 12.5px/1.4 var(--sans);color:#c7bdb8;letter-spacing:.01em}
+.hero-photo figcaption b{color:#fff;font-weight:800}
+@media(max-width:860px){.hero-photo{max-width:340px}}
+.hero .kick{opacity:0;animation:rise .7s .1s forwards}
+.hero h1{font-size:clamp(48px,9vw,120px);line-height:.9;margin:20px 0 0;color:#fff;
+  opacity:0;animation:rise .8s .22s forwards}
+.hero h1 .em{display:block;color:var(--red-soft)}
+.hero .lede{max-width:60ch;margin:28px 0 0;font-size:clamp(17px,2.1vw,21px);color:#d7cfcb;opacity:0;animation:rise .8s .4s forwards;text-align:justify;text-justify:inter-word;hyphens:auto}
+.hero .lede b{color:#fff;font-weight:700}
+.scroll{margin-top:44px;display:inline-flex;gap:11px;align-items:center;font:800 12px/1 var(--sans);letter-spacing:.2em;text-transform:uppercase;color:var(--gold);opacity:0;animation:rise .8s .6s forwards}
+.scroll .dot{width:9px;height:9px;border-radius:50%;background:var(--red);animation:pulse 1.7s infinite}
+@keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+@keyframes shine{to{background-position:-200% 0}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+
+/* ---------- STORY ---------- */
+.story{background:var(--stone-2);border-bottom:1px solid var(--line)}
+.storygrid{display:grid;grid-template-columns:1fr 1fr;gap:52px;align-items:center}
+@media(max-width:780px){.storygrid{grid-template-columns:1fr;gap:32px}}
+.pullquote{font-family:var(--disp);text-transform:uppercase;font-size:clamp(26px,4vw,42px);line-height:1.02;color:var(--papyrus)}
+:root[data-theme="light"] .pullquote{color:var(--ink)}
+.pullquote .em{color:var(--gold)}
+.pullquote small{display:block;font-family:var(--sans);text-transform:none;font-size:15.5px;font-weight:400;color:var(--muted);margin-top:20px;letter-spacing:0;line-height:1.65}
+.timeline{display:flex;flex-direction:column;border-left:2px solid var(--gold-dim);margin-left:8px}
+.tl{display:grid;grid-template-columns:96px 1fr;gap:16px;padding:16px 0 16px 20px;position:relative}
+.tl::before{content:"";position:absolute;left:-8px;top:24px;width:12px;height:12px;border-radius:50%;background:var(--stone-2);border:2px solid var(--gold)}
+.tl:last-child::before{background:var(--red);border-color:var(--red)}
+.tl .yr{font:800 15px/1.2 var(--mono);color:var(--gold)}
+.tl .ev b{display:block;font-weight:700;color:var(--papyrus);margin-bottom:3px}
+:root[data-theme="light"] .tl .ev b{color:var(--ink)}
+.tl .ev{font-size:14px;color:var(--muted)}
+
+/* ---------- STATS BAND ---------- */
+.band{background:linear-gradient(120deg,var(--red-deep),#111417 130%);color:#fff;border-top:3px solid var(--red);border-bottom:3px solid #111417}
+.bandgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:24px}
+@media(max-width:780px){.bandgrid{grid-template-columns:1fr 1fr;gap:30px}}
+.bstat b{font-family:var(--disp);font-size:clamp(42px,6.5vw,68px);line-height:.86;display:block;color:var(--gold)}
+.bstat span{font-size:13px;letter-spacing:.05em;color:#d7ccb4;display:block;margin-top:8px;text-transform:uppercase}
+
+/* ---------- POOL ---------- */
+.filters{display:flex;flex-wrap:wrap;gap:14px;margin:10px 0 32px}
+/* Chips and search on one row: both narrow the same list, so stacking them made
+   the search read as a separate section between the filters and the results.
+   The search sits right, away from the chips, and drops below them on mobile. */
+.filterbar{display:flex;align-items:center;justify-content:space-between;
+  gap:16px;flex-wrap:wrap;margin:10px 0 32px}
+/* .scfilters too: scouting and fixtures use that class for their chip rows, and
+   matching only .filters left their margins fighting the bar's own spacing. */
+.filterbar .filters,.filterbar .scfilters{margin:0;flex:1 1 auto}
+.filterbar .fxsearch{margin-left:auto}
+.ddl{display:inline-flex;flex-direction:column;gap:6px}
+.ddl>span{font:800 10px/1 var(--sans);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.ddl select{font:700 14px/1 var(--sans);color:var(--ink);background:var(--stone-2);border:1.5px solid var(--line-lt);border-radius:8px;padding:11px 38px 11px 14px;cursor:pointer;
+  -webkit-appearance:none;appearance:none;min-width:200px;transition:.14s;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23c8102e' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center}
+:root[data-theme="light"] .ddl select{background-color:#fff}
+.ddl select:hover{border-color:var(--red)}
+.ddl select:focus-visible{outline:2px solid var(--red);outline-offset:2px}
+.chip{font:800 12.5px/1 var(--sans);letter-spacing:.04em;padding:10px 15px;border-radius:4px;cursor:pointer;border:1px solid var(--line-lt);background:transparent;color:var(--muted);transition:.14s;display:inline-flex;align-items:center;gap:7px}
+.chip:hover{border-color:var(--gold);color:var(--papyrus)}
+:root[data-theme="light"] .chip:hover{color:var(--ink)}
+/* The shortlist marks selection with aria-pressed; the scouting and fixtures
+   chips use a .on class. Both need the same treatment, or a selected chip in
+   those sections looks unselected. */
+.chip[aria-pressed="true"],.chip.on{background:var(--gold);color:var(--stone);border-color:var(--gold)}
+
+/* The count bubble: .cnt in the shortlist, a bare <b> in the newer sections.
+   Style both the same so the two filter rows read as one system. */
+.chip b{min-width:20px;text-align:center;padding:1px 6px;border-radius:99px;
+  font:800 11px/1.5 var(--mono);background:rgba(138,127,102,.25)}
+.chip[aria-pressed="true"] b,.chip.on b{background:var(--stone);color:var(--gold)}
+
+/* Clicking a button leaves it focused, and the browser's default ring made an
+   unselected chip look active beside the genuinely selected one — two red-ish
+   outlines at once. Keyboard focus still shows, via :focus-visible below. */
+.chip:focus{outline:none}
+
+/* club crest on the shortlist card footer, beside the club name */
+.pc-foot .club{display:flex;align-items:center;gap:7px;min-width:0}
+.ccrest{width:17px;height:17px;object-fit:contain;flex:none}
+.chip:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.chip .cnt{min-width:20px;text-align:center;padding:1px 6px;border-radius:99px;font:800 11px/1.5 var(--mono);background:rgba(138,127,102,.25)}
+.chip[aria-pressed="true"] .cnt{background:var(--stone);color:var(--gold)}
+
+.grid{display:flex;flex-direction:column;gap:38px}
+.posGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:18px}
+.posSection{display:flex;flex-direction:column;gap:16px}
+.posHd{display:flex;align-items:center;gap:12px;font-family:var(--disp);font-size:22px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink);padding-bottom:12px;border-bottom:2px solid var(--red)}
+.posHd .pi{width:22px;height:22px;color:var(--red);display:inline-flex}
+.posHd .pi svg{width:100%;height:100%}
+.posHd .pn{margin-left:auto;font-family:var(--mono);font-size:15px;font-weight:800;color:#fff;background:var(--red);padding:4px 11px;border-radius:99px}
+.pcard{background:var(--stone-2);border:1px solid var(--line);border-radius:14px;padding:0;cursor:pointer;position:relative;overflow:hidden;
+  transition:transform .2s cubic-bezier(.2,.7,.3,1),box-shadow .2s,border-color .2s}
+:root[data-theme="light"] .pcard{background:#fff;border-color:var(--line-lt);box-shadow:0 2px 8px rgba(20,10,10,.05)}
+.pcard:hover{transform:translateY(-6px);border-color:var(--red);box-shadow:0 20px 44px rgba(200,16,46,.18)}
+/* squad-card header band */
+.pc-band{background:linear-gradient(135deg,#171a1d,var(--red-deep) 260%);padding:16px 17px 40px;position:relative;overflow:hidden}
+.pcard.dia .pc-band{background:linear-gradient(135deg,var(--red-deep),#171a1d 200%)}
+.pc-band::after{content:"";position:absolute;inset:0;background:radial-gradient(80% 120% at 92% -10%,rgba(200,16,46,.4),transparent 55%);pointer-events:none}
+.pc-num{position:absolute;right:8px;top:-12px;font-family:var(--disp);font-size:88px;line-height:1;color:rgba(255,255,255,.06);font-weight:800;z-index:0}
+.pc-age{flex:none;z-index:2;font-family:var(--disp);font-size:26px;line-height:1;color:#fff;font-weight:800;text-align:right;width:42px}
+.pc-age small{display:block;font-family:var(--sans);font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--red-soft);margin-top:2px;text-transform:uppercase}
+.pc-top{position:relative;z-index:1;display:flex;gap:12px;align-items:flex-start}
+.pc-idcol{flex:1;min-width:0}
+.pc-name{font-family:var(--disp);font-size:22px;line-height:1.02;color:#fff;letter-spacing:.01em;overflow-wrap:break-word;hyphens:auto}
+.pc-pos{font:800 10.5px/1 var(--sans);letter-spacing:.06em;color:var(--red-soft);text-transform:uppercase;margin-top:7px;display:inline-flex;gap:6px;align-items:center}
+.pc-pos .badge{background:var(--red);color:#fff;padding:3px 7px;border-radius:4px}
+.pc-photo{width:56px;height:56px;border-radius:9px;object-fit:cover;flex:none;background:#171a1d;border:2px solid rgba(255,255,255,.18)}
+.pc-photo.ph{display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-size:22px;color:#fff;background:linear-gradient(150deg,var(--red),var(--red-deep))}
+.pc-in{padding:0 17px 17px;margin-top:-26px;position:relative;z-index:2}
+.pc-pass{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px}
+.pp{display:inline-flex;align-items:center;gap:5px;font:800 10px/1 var(--sans);letter-spacing:.04em;padding:5px 8px;border-radius:4px;border:1px solid var(--line-lt);color:var(--muted);text-transform:uppercase;background:var(--stone-2)}
+.pp .flag{border-radius:2px;display:block;object-fit:cover;box-shadow:0 0 0 1px rgba(0,0,0,.12)}
+:root[data-theme="light"] .pp{background:#fff}
+.pp.eg{background:var(--red);color:#fff;border-color:var(--red)}
+/* .origin removed with the card's birthplace line -- .pc-pass already carries the
+   12px bottom margin the layout needs, so the spacing is unchanged. */
+
+/* Manual entries. Outlined rather than filled: the card should read as "this one
+   came from you, not the crawl" without competing with the passport chips beside
+   it. The note carries the eligibility claim, so it travels with the player. */
+/* Stand-in for a club with no crest on file. Same box as the <img> it replaces,
+   so rows stay aligned whether or not a badge exists. */
+.crx{width:24px;height:24px;flex:none;border-radius:5px;display:inline-flex;
+  align-items:center;justify-content:center;font:800 11px/1 var(--sans);
+  color:var(--muted);background:rgba(128,128,128,.14);border:1px solid var(--line)}
+
+/* Involvement pill on a fixture card. Amber for an unused sub, grey for left out
+   entirely -- the same reading the squad strip gives, so the two tabs agree. */
+.pw{font:800 9.5px/1 var(--sans);letter-spacing:.06em;text-transform:uppercase;
+  padding:4px 7px;border-radius:5px;white-space:nowrap}
+.pw.b{color:#d9a441;background:rgba(217,164,65,.13)}
+.pw.o{color:var(--muted);background:rgba(128,128,128,.13)}
+/* TM has the fixture but not the minutes yet -- usually a match from the last
+   day or two. Neutral, not amber: this is a gap in the source, not a judgement
+   about the player. */
+.pw.p{color:var(--muted);background:transparent;border:1px dashed var(--line)}
+
+.manual{display:inline-flex;align-items:center;font:800 9.5px/1 var(--sans);
+  letter-spacing:.08em;text-transform:uppercase;color:var(--gold);
+  border:1px dashed var(--gold);border-radius:5px;padding:5px 7px;background:transparent}
+.mnote-in{font-size:11px;line-height:1.45;color:var(--muted);margin:-6px 0 11px;
+  padding-left:9px;border-left:2px solid var(--gold-dim)}
+.pc-mini{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:13px}
+.pmc{background:var(--stone);border-radius:8px;padding:11px 4px;text-align:center;border:1px solid var(--line)}
+:root[data-theme="light"] .pmc{background:var(--stone-2);border-color:var(--line-lt)}
+.pmc b{font-family:var(--disp);font-size:21px;line-height:1;display:block;color:var(--ink)}
+.pmc.g b{color:var(--red)}
+.pmc span{font-size:9px;letter-spacing:.03em;color:var(--muted);text-transform:uppercase;display:block;margin-top:5px}
+.pc-foot{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:11px}
+.clubcol{min-width:0;display:flex;flex-direction:column;gap:3px}
+.pc-foot .club{font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+.pc-foot .clubmeta{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pc-foot .clubmeta b{color:var(--red);font-weight:800}
+.pc-foot .cflag{width:15px;height:10px;border-radius:2px;object-fit:cover;flex:none;box-shadow:0 0 0 1px rgba(0,0,0,.12)}
+.pc-foot .val{font:800 15px/1 var(--mono);color:var(--red);flex:none}
+
+/* ---------- ANALYTICS ---------- */
+.analytics{background:var(--stone-2);border-top:1px solid var(--line)}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:38px 50px;margin-top:16px}
+@media(max-width:780px){.charts{grid-template-columns:1fr;gap:34px}}
+.chart{background:var(--stone);border:1px solid var(--line);border-radius:14px;padding:22px 24px}
+:root[data-theme="light"] .chart{background:#fff;border-color:var(--line-lt);box-shadow:0 2px 8px rgba(20,10,10,.04)}
+.chart h3{font-size:16px;letter-spacing:.04em;color:var(--ink);margin:0 0 18px;display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid var(--red);padding-bottom:11px}
+.chart h3 small{font-family:var(--sans);font-weight:400;text-transform:none;letter-spacing:0;font-size:12px;color:var(--muted)}
+.bars{display:flex;flex-direction:column;gap:11px}
+.bar{display:grid;grid-template-columns:118px 1fr;align-items:center;gap:12px}
+.bar .lb{font-size:13px;font-weight:600;color:var(--ink);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar .track{height:24px;background:var(--stone-2);border-radius:6px;overflow:hidden;position:relative}
+:root[data-theme="light"] .bar .track{background:#f0ebe8}
+.bar .fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--red-deep),var(--red));transform-origin:left;animation:grow .85s cubic-bezier(.2,.7,.3,1) both;
+  display:flex;align-items:center;justify-content:flex-end;min-width:26px}
+.bar .fill.alt{background:linear-gradient(90deg,#171a1d,var(--red) 220%)}
+.bar .fill .n{font:800 12px/1 var(--mono);color:#fff;padding-right:9px}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.agechart{display:flex;align-items:flex-end;gap:8px;height:172px;padding-top:14px}
+.agecol{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;justify-content:flex-end;transition:.15s}
+.agecol:hover .ab{filter:brightness(1.15)}
+.agecol .av{font:800 12px/1 var(--mono);color:var(--red);height:14px}
+.agecol .ab{width:82%;max-width:34px;background:linear-gradient(180deg,var(--red),var(--red-deep));border-radius:5px 5px 0 0;animation:growY .85s cubic-bezier(.2,.7,.3,1) both;box-shadow:0 2px 8px rgba(200,16,46,.25)}
+.agecol .ax{font:800 11px/1 var(--mono);color:var(--muted);border-top:2px solid var(--line);padding-top:7px;width:100%;text-align:center}
+/* analytics filter bar */
+.afilters{display:flex;flex-wrap:wrap;gap:18px;margin:22px 0 8px;align-items:flex-end}
+.afilters .lbl{font:800 10px/1 var(--sans);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-right:2px}
+.afilters .achip{font:800 12px/1 var(--sans);padding:8px 13px;border-radius:99px;cursor:pointer;border:1px solid var(--line-lt);background:transparent;color:var(--muted);transition:.13s}
+.afilters .achip:hover{border-color:var(--red);color:var(--ink)}
+.afilters .achip[aria-pressed="true"]{background:var(--red);color:#fff;border-color:var(--red)}
+.afilters .sep{width:1px;height:20px;background:var(--line);margin:0 4px}
+.agecol .ax{font:800 10px/1 var(--mono);color:var(--muted)}
+.agecol .av{font:800 11px/1 var(--mono);color:var(--gold)}
+@keyframes growY{from{transform:scaleY(0);transform-origin:bottom}to{transform:scaleY(1)}}
+
+/* ---------- METHOD / ASK ---------- */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:14px}
+@media(max-width:780px){.steps{grid-template-columns:1fr}}
+.step{border:1px solid var(--line);border-radius:10px;padding:22px;background:var(--stone-2)}
+:root[data-theme="light"] .step{border-color:var(--line-lt)}
+.step .num{font-family:var(--disp);font-size:15px;color:var(--gold);letter-spacing:.1em}
+.step h3{font-size:19px;margin:9px 0 7px;color:var(--papyrus)}
+:root[data-theme="light"] .step h3{color:var(--ink)}
+.step p{margin:0;font-size:14.5px;color:var(--muted)}
+.ask{background:linear-gradient(160deg,var(--red-deep),#111417 120%);color:#fff;text-align:center;border-top:3px solid var(--red)}
+.ask h2{font-size:clamp(32px,5.5vw,58px);color:var(--gold)}
+.ask h2 .em{color:var(--red)}
+.ask p{max-width:56ch;margin:22px auto 0;color:#d7ccb4;font-size:17px}
+.disc{max-width:1140px;margin:0 auto;padding:30px 24px 70px;font-size:12.5px;color:var(--muted);line-height:1.75;border-top:1px solid var(--line)}
+.disc b{color:var(--sand)}
+
+/* ---------- MODAL (stone tablet) ---------- */
+.modal{position:fixed;inset:0;background:rgba(6,5,4,.8);backdrop-filter:blur(5px);z-index:60;display:none;align-items:center;justify-content:center;padding:20px}
+.modal.on{display:flex;animation:fade .2s}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.sheet{background:var(--stone-2);border:1px solid var(--gold-dim);border-radius:14px;max-width:540px;width:100%;max-height:92vh;overflow:auto;box-shadow:0 40px 100px rgba(0,0,0,.7);animation:pop .28s cubic-bezier(.2,.8,.3,1)}
+:root[data-theme="light"] .sheet{background:var(--papyrus)}
+@keyframes pop{from{transform:translateY(24px) scale(.96);opacity:0}to{transform:none;opacity:1}}
+.sheet-hd{background:linear-gradient(140deg,#111417,var(--red-deep) 240%);padding:26px;display:flex;gap:18px;align-items:center;position:relative;overflow:hidden;border-bottom:3px solid var(--red)}
+.sheet-hd::after{content:"";position:absolute;inset:0;background:radial-gradient(90% 130% at 92% 0,rgba(200,16,46,.34),transparent 55%);pointer-events:none}
+.sheet-photo{width:96px;height:96px;border-radius:10px;object-fit:cover;flex:none;border:2px solid var(--red);position:relative;z-index:1}
+.sheet-photo.ph{display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-size:36px;color:var(--stone);background:linear-gradient(150deg,var(--gold),var(--gold-dim))}
+.sheet-hd .who{position:relative;z-index:1;min-width:0}
+.sheet-hd .who h3{font-family:var(--disp);font-size:27px;color:#fff;line-height:1;margin:0;text-transform:none;letter-spacing:0}
+.metaline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:11px}
+.posbadge{font:800 12px/1 var(--sans);letter-spacing:.05em;background:var(--red);color:#fff;padding:6px 11px;border-radius:5px;text-transform:uppercase}
+.metaline .m{font:700 12px/1 var(--sans);color:#d7ccb4;background:rgba(255,255,255,.08);padding:5px 9px;border-radius:5px}
+.pass2{display:flex;gap:6px;margin-top:11px}
+.pass2 .pp{border-color:rgba(255,255,255,.22);color:#e8ddc4}
+.mclose{position:absolute;top:14px;right:14px;z-index:2;width:34px;height:34px;border-radius:50%;border:none;background:rgba(255,255,255,.13);color:#fff;font-size:19px;cursor:pointer;line-height:1}
+.mclose:hover{background:var(--red)}
+.sheet-body{padding:24px 26px}
+
+/* pitch */
+.pitchwrap{display:flex;gap:16px;align-items:stretch;margin:0 0 20px}
+.pitch{width:98px;flex:none;aspect-ratio:68/105;border:1.5px solid var(--gold-dim);border-radius:7px;position:relative;
+  background:linear-gradient(160deg,rgba(63,174,107,.16),transparent);overflow:hidden}
+.pitch::before{content:"";position:absolute;left:8%;right:8%;top:50%;height:1px;background:var(--gold-dim);opacity:.5}
+.pitch::after{content:"";position:absolute;left:50%;top:50%;width:26px;height:26px;transform:translate(-50%,-50%);border:1px solid var(--gold-dim);opacity:.5;border-radius:50%}
+.pitch .box{position:absolute;left:26%;right:26%;height:16%;border:1px solid var(--gold-dim);opacity:.5;border-top:none}
+.pitch .box.t{top:0;border-top:1px solid var(--gold-dim);border-bottom:none}
+.pitch .box.b{bottom:0}
+.pitch .dot{position:absolute;width:16px;height:16px;border-radius:50%;background:var(--red);transform:translate(-50%,-50%);
+  box-shadow:0 0 0 4px rgba(200,16,46,.3);font:800 8px/16px var(--sans);color:#fff;text-align:center}
+.pitchinfo{flex:1;display:flex;flex-direction:column;justify-content:center;gap:4px}
+.pitchinfo .role{font-family:var(--disp);font-size:21px;color:var(--papyrus);line-height:1}
+:root[data-theme="light"] .pitchinfo .role{color:var(--ink)}
+.pitchinfo .rsub{font-size:13px;color:var(--muted)}
+.pitchinfo .lg{font:600 12px/1.4 var(--sans);color:var(--muted);margin-top:3px}
+
+/* 8 stat cards */
+.ct{font:800 14px/1.2 var(--sans);letter-spacing:.10em;text-transform:uppercase;color:var(--gold);margin:0 0 16px;display:flex;align-items:center;gap:9px;padding-bottom:10px;border-bottom:2px solid var(--red)}
+.ct svg{width:15px;height:15px}
+.statcards{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:20px}
+@media(max-width:460px){.statcards{grid-template-columns:repeat(2,1fr)}}
+.sc{background:#171a1d;border:1px solid var(--line);border-radius:10px;padding:14px 6px;text-align:center;opacity:0;transform:translateY(8px);animation:scin .4s forwards;position:relative;overflow:hidden}
+.sc.hl{background:linear-gradient(150deg,var(--red-deep),#171a1d 220%);border-color:var(--red)}
+.sc .ic{width:18px;height:18px;margin:0 auto 8px;color:#8f8681}
+.sc.hl .ic{color:#fff}
+.sc .ic svg{width:100%;height:100%}
+.sc b{font-family:var(--disp);font-size:24px;line-height:1;display:block;color:#fff}
+.sc.hl b{color:#fff}
+.sc span{font-size:9.5px;letter-spacing:.04em;color:#9a908b;text-transform:uppercase;display:block;margin-top:6px}
+.sc.hl span{color:#f0c9ce}
+@keyframes scin{to{opacity:1;transform:none}}
+
+/* transfer timeline */
+.transfers{margin:2px 0 20px}
+.tflist{border-left:2px solid var(--gold-dim);margin-left:6px}
+.tf{display:grid;grid-template-columns:72px 1fr auto;gap:10px;align-items:center;padding:9px 0 9px 16px;position:relative}
+.tf::before{content:"";position:absolute;left:-7px;top:50%;transform:translateY(-50%);width:10px;height:10px;border-radius:50%;background:var(--stone-2);border:2px solid var(--muted)}
+:root[data-theme="light"] .tf::before{background:var(--papyrus)}
+.tf.big::before{background:var(--gold);border-color:var(--gold)}
+.tf .tdate{font:700 11px/1.3 var(--mono);color:var(--muted)}
+.tf .tmove{font-size:13px;color:var(--papyrus)}
+:root[data-theme="light"] .tf .tmove{color:var(--ink)}
+.tf .tmove .arr{color:var(--muted);margin:0 4px}
+.tf .tmove .to{font-weight:700}
+.tf .tfee{font:800 12px/1 var(--mono);color:var(--muted);white-space:nowrap}
+.tf .tfee.paid{color:var(--gold)}
+
+/* value */
+.mvbox{margin:2px 0 18px;padding:16px;background:rgba(27,58,107,.14);border-radius:10px;border:1px solid var(--line)}
+:root[data-theme="light"] .mvbox{background:rgba(27,58,107,.06);border-color:var(--line-lt)}
+.mvhd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+.mvhd .t{font:800 11px/1 var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--gold)}
+.mvhd .rise{font:800 12px/1 var(--mono)}
+.mvbox svg.spark{width:100%;height:54px;display:block;overflow:visible}
+.ends{display:flex;justify-content:space-between;margin-top:9px;font:800 12px/1 var(--mono)}
+.ends .s{color:var(--muted)}.ends .n{color:var(--papyrus)}.ends .p{color:var(--gold)}
+:root[data-theme="light"] .ends .n{color:var(--ink)}
+.mvbox.flat .flatnote{font-size:12.5px;color:var(--muted);margin-top:6px}
+
+.bio{display:flex;flex-direction:column}
+.bio .r{display:grid;grid-template-columns:130px 1fr;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+:root[data-theme="light"] .bio .r{border-color:var(--line-lt)}
+.bio .r:last-child{border-bottom:none}
+.bio .r .k{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.bio .r .v{color:var(--papyrus)}
+:root[data-theme="light"] .bio .r .v{color:var(--ink)}
+.bio .r .v b{color:var(--gold)}
+.sheet-ft{padding:0 26px 24px;display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap}
+.sheet-ft .note{font-size:11.5px;color:var(--muted);max-width:58%}
+.sheet-ft a{font:800 12px/1 var(--sans);letter-spacing:.03em;color:var(--stone);background:var(--gold);padding:12px 17px;border-radius:7px;text-decoration:none}
+.sheet-ft a:hover{background:var(--gold-soft)}
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+
+/* ---- match tables (form / seasons) ---- */
+.mtbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:2px}
+.mtbl th{font:700 9.5px/1 var(--sans);letter-spacing:.09em;text-transform:uppercase;color:var(--muted);
+  text-align:left;padding:0 8px 8px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+.mtbl th.r,.mtbl td.r{text-align:right;padding-right:0}
+.mtbl th.c,.mtbl td.c{text-align:center}
+.mtbl td{padding:9px 8px 9px 0;border-bottom:1px solid var(--line);color:var(--sand);
+  font-variant-numeric:tabular-nums;vertical-align:middle}
+.mtbl tr:last-child td{border-bottom:0}
+.mtbl .dt{color:var(--muted);font-size:11px;white-space:nowrap}
+.mtbl .ha{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.06em}
+.rp{display:inline-flex;align-items:center;gap:6px;font-weight:800;font-size:11px;
+  padding:3px 9px;border-radius:20px;letter-spacing:.03em}
+.rp.W{background:rgba(46,160,90,.13);color:#2e9d5a}
+.rp.D{background:rgba(122,114,110,.14);color:var(--muted)}
+.rp.L{background:rgba(200,16,46,.11);color:var(--red)}
+.rp .sc{font-variant-numeric:tabular-nums;opacity:.75;font-weight:600}
+.mtbl .mn{color:var(--sand);white-space:nowrap}
+.mtbl .mn i{font-style:normal;font-size:10px;color:var(--muted);margin-left:4px;letter-spacing:.04em}
+.mtbl .ga{font-weight:700;color:var(--red);white-space:nowrap}
+.mtbl .ga.z{color:var(--line);font-weight:400}
+.mwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.trend{font-size:11px;font-weight:700}
+.trend.up{color:#2e9d5a}.trend.dn{color:var(--red)}.trend.fl{color:var(--muted)}
+.sbar{height:6px;background:var(--line);border-radius:4px;overflow:hidden;min-width:70px}
+.sbar i{display:block;height:100%;background:linear-gradient(90deg,var(--red-deep),var(--red));border-radius:4px}
+
+/* ---- dossier section rhythm ---- */
+.sheet-bd > .ct{margin-top:38px}
+.sheet-bd > .ct:first-of-type{margin-top:8px}
+.sheet-bd > .mwrap{margin-bottom:6px}
+.sheet-bd > .mnote{margin-bottom:4px}
+.statcards{margin-bottom:8px}
+.transfers{margin-top:38px}
+.mvbox{margin-top:38px}
+.bio{margin-top:38px}
+
+/* opponent cell */
+.mtbl .opp{color:var(--ink);font-weight:700;max-width:270px}
+.mtbl .opp .vs{color:var(--muted);font-weight:400;font-size:10px;margin-right:5px;
+  text-transform:uppercase;letter-spacing:.06em}
+.mtbl .opp small{display:block;font-weight:400;color:var(--muted);font-size:10.5px;
+  letter-spacing:.01em;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  max-width:270px;cursor:help}
+
+/* national-team match marker */
+.mtbl tr.isnat td{background:rgba(200,16,46,.035)}
+:root[data-theme="light"] .mtbl tr.isnat td{background:rgba(200,16,46,.045)}
+.natl{display:inline-block;font-size:8.5px;font-weight:800;letter-spacing:.07em;
+  padding:2px 5px;border-radius:4px;margin-left:7px;vertical-align:middle;
+  background:rgba(200,16,46,.13);color:var(--red)}
+.mnote .natl{margin-left:0;margin-right:4px}
+
+/* ---- scouting mode ---- */
+.scouting .mwrap{margin-top:18px}
+.sctbl .pl{color:var(--ink);font-weight:700;white-space:nowrap}
+.sctbl .pl small{display:block;font-weight:400;color:var(--muted);font-size:10.5px;margin-top:3px}
+/* Face + crest, matching the other two tabs. Without them this column was a
+   plain name and the whole tab read as a spreadsheet rather than part of the
+   same tool. */
+.plw{display:flex;align-items:center;gap:11px}
+.plt{min-width:0}
+.scface{width:34px;height:34px;flex:none;border-radius:8px;object-fit:cover;
+  background:var(--stone-2);border:1px solid var(--line)}
+.scface.ini{display:inline-flex;align-items:center;justify-content:center;
+  font:800 12px/1 var(--sans);color:var(--muted)}
+.sccrest{width:14px;height:14px;object-fit:contain;vertical-align:-2px;margin-right:5px}
+/* Taller blocks with a touch more air. At 13x19 and 3px apart the run of ten
+   read as a texture; the point of this column is that the pattern is legible
+   at a glance. */
+.strip{display:inline-flex;gap:4px}
+.strip i{width:15px;height:24px;border-radius:3px;display:block}
+/* Rows carry a 34px portrait now, so the inherited 9px padding left them
+   cramped. Zebra striping instead of relying on the divider alone: scanning
+   across six columns for 73 players needs the eye anchored to a row. */
+.sctbl td{padding:11px 10px 11px 0}
+.sctbl tbody tr:nth-child(even){background:rgba(128,128,128,.035)}
+.sctbl tbody tr:hover{background:rgba(200,16,46,.045)}
+
+/* Each position group is its own <table>, so by default every one sizes its
+   columns to its own content and the four sections do not line up -- the
+   goalkeepers' club names are shorter than the midfielders', so the strip
+   column starts in a different place in each. Fixed layout with explicit widths
+   makes all four share one grid. */
+.sctbl{table-layout:fixed;width:100%}
+.sctbl col.c-player{width:26%}
+.sctbl col.c-strip {width:20%}
+.sctbl col.c-tally {width:19%}
+.sctbl col.c-ga    {width:7%}
+.sctbl col.c-signal{width:16%}
+.sctbl col.c-date  {width:12%}
+/* Long club names would otherwise force the fixed column to overflow. */
+.sctbl .pl small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:900px){
+  .sctbl{table-layout:auto}
+  .sctbl col{width:auto}
+}
+.strip i.P{background:#2e9d5a}
+.strip i.B{background:#d9a441}
+.strip i.O{background:var(--line)}
+:root[data-theme="light"] .strip i.O{background:#ddd6d2}
+.sctbl .tally{font-variant-numeric:tabular-nums;white-space:nowrap;font-size:11px;color:var(--muted)}
+.sctbl .tally b{color:var(--ink)}
+.sctbl .ga2{font-weight:700;color:var(--red);white-space:nowrap}
+.sctbl .ga2.z{color:var(--line);font-weight:400}
+.pill{display:inline-block;font-size:9.5px;font-weight:800;letter-spacing:.05em;
+  padding:4px 9px;border-radius:20px;white-space:nowrap}
+.pill.hot{background:rgba(46,157,90,.14);color:#2e9d5a}
+.pill.cold{background:rgba(200,16,46,.1);color:var(--red)}
+.pill.mid{background:rgba(122,114,110,.13);color:var(--muted)}
+/* Amber, matching the benched blocks in the strip beside it: travelling with the
+   squad every week but never used is a distinct state from being left out. */
+.pill.bench{background:rgba(217,164,65,.16);color:#b8860b}
+:root[data-theme="dark"] .pill.bench{color:#d9a441}
+
+/* ---- national teams tab ---- */
+.ntblurb{color:var(--muted);font-size:12.5px;margin:2px 0 12px;max-width:76ch;line-height:1.5}
+/* The team itself. A bare country is a SENIOR side -- the only thing that
+   cap-ties -- so it is red, never mistakable for a youth call-up. */
+.ntag{display:inline-block;font:700 11.5px/1 var(--sans);padding:5px 9px;border-radius:6px;
+  background:rgba(128,128,128,.12);color:var(--ink);white-space:nowrap}
+.ntag.sr{background:rgba(200,16,46,.12);color:var(--red);font-weight:800}
+.ntag.none{background:transparent;border:1px dashed var(--line);color:var(--muted);font-weight:400}
+.npill{display:inline-block;font:800 9.5px/1 var(--sans);letter-spacing:.05em;
+  padding:4px 9px;border-radius:20px;white-space:nowrap}
+.npill.ok{background:rgba(46,157,90,.14);color:#2e9d5a}
+.npill.egy{background:rgba(200,16,46,.1);color:var(--red)}
+.npill.no{background:rgba(128,128,128,.16);color:var(--muted);text-decoration:line-through}
+.npill.chk{background:rgba(217,164,65,.16);color:#b8860b}
+:root[data-theme="dark"] .npill.chk{color:#d9a441}
+.nattbl td{padding:11px 10px 11px 0}
+
+/* Expandable rows on the national-teams tab. */
+.natrow{cursor:pointer}
+.natrow:hover{background:rgba(200,16,46,.05)}
+.natrow.open{background:rgba(200,16,46,.06)}
+.natrow:focus-visible{outline:2px solid var(--red);outline-offset:-2px}
+.natx{display:inline-block;margin-left:8px;font:700 10.5px/1 var(--mono,var(--sans));
+  color:var(--muted);white-space:nowrap}
+/* The block inherits .mtbl at width:100%, which is right inside a narrow modal
+   and wrong here: stretched across the full table the columns drift apart and
+   G/A ends up against the far edge, disconnected from the row it belongs to.
+   Cap it and indent it so it reads as detail belonging to the row above. */
+.natdet>td{padding:2px 0 16px 0!important;background:rgba(128,128,128,.045);
+  border-bottom:2px solid var(--line)}
+.natdet .ct{margin:14px 0 10px 0}
+.natdet .natgrp{max-width:660px;margin-left:44px}   /* aligns under the player name */
+.natdet .natgrp:last-of-type{margin-bottom:6px}
+.natdet .mnote{margin-left:44px;max-width:660px}
+.natdet .mtbl td{padding:7px 10px 7px 0}
+.natdet .mtbl .opp{width:100%}                      /* takes the slack, not G/A */
+.natdet .mtbl .dt{white-space:nowrap;color:var(--muted)}
+.natdet .mtbl .mn{white-space:nowrap;text-align:right;padding-right:22px}
+/* var(--line) is a border colour and was far too faint for text -- the year read
+   as absent. Quieter than the day and month, but legible. */
+.natdet .mtbl .dt .yr{color:var(--muted);font-weight:400;opacity:.75}
+@media (max-width:760px){
+  .natdet .natgrp,.natdet .mnote{margin-left:0}
+}
+
+/* National-team block, grouped by side. */
+.natgrp{margin-bottom:16px}
+.natgh{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 6px}
+/* National-side badge. contain, not cover: these are crests and flags of mixed
+   aspect ratios, and cropping them would cut the emblem. */
+.natflag{width:16px;height:16px;object-fit:contain;vertical-align:-3px;margin-right:6px;flex:none}
+.natgh .natflag{width:20px;height:20px;vertical-align:-4px}
+.ntag .natflag{width:14px;height:14px;vertical-align:-2px;margin-right:5px}
+.natgh b{font:800 13.5px/1.2 var(--sans);color:var(--ink)}
+.natgh b.sr{color:var(--red)}          /* senior side — the one that cap-ties */
+.natgh span{font-size:11.5px;color:var(--muted)}
+.scfilters{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
+.sclegend{font-size:11px;color:var(--muted);margin-top:10px;display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+.sclegend span{display:inline-flex;align-items:center;gap:6px}
+.sclegend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+
+/* ---- view tabs ---- */
+.vtabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--line);
+  margin:0 auto 6px;max-width:1140px;padding:0 24px}
+.vtab{appearance:none;background:none;border:0;cursor:pointer;font:800 13px/1 var(--sans);
+  letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:15px 4px 13px;
+  margin-right:26px;border-bottom:3px solid transparent;transition:color .15s,border-color .15s}
+.vtab:hover{color:var(--ink)}
+.vtab.on{color:var(--red);border-bottom-color:var(--red)}
+.vtab .vc{display:inline-block;margin-left:8px;font-size:11px;font-weight:700;
+  background:var(--stone-2);color:var(--muted);border-radius:20px;padding:3px 8px;
+  vertical-align:middle;letter-spacing:0}
+:root[data-theme="light"] .vtab .vc{background:#f0ecea}
+.vtab.on .vc{background:rgba(200,16,46,.12);color:var(--red)}
+.vhide{display:none}
+@media(max-width:620px){.vtab{margin-right:16px;font-size:12px}}
+
+/* position groups inside scouting mode */
+.scgrp{margin-top:34px}
+.scgrp:first-child{margin-top:22px}
+.scgrp .gc{display:inline-block;margin-left:9px;font-size:11px;font-weight:700;
+  background:var(--stone-2);color:var(--muted);border-radius:20px;padding:3px 9px;letter-spacing:0}
+:root[data-theme="light"] .scgrp .gc{background:#f0ecea}
+
+
+/* ---- match cards ---- */
+#view-fix .scfilters{margin-top:22px}
+.fxtools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+/* Sized to a search field, not a form input. flex-grow was 1, so it stretched to
+   the full container width and read as the page's main element rather than a
+   filter for the list below it. */
+.fxsearch{flex:0 1 300px;max-width:300px;position:relative}
+.fxsearch input{width:100%;font:400 13px/1 var(--sans);color:var(--ink);background:var(--stone-2);
+  border:1px solid var(--line);border-radius:8px;padding:9px 12px 9px 32px;outline:none}
+.fxsearch input:focus{border-color:var(--red)}
+/* A magnifying glass: circle plus handle. This was only the circle -- the ::after
+   handle was never written -- so it rendered as a bare ring that read as an
+   unchecked radio button. */
+.fxsearch::before{content:"";position:absolute;left:12px;top:50%;margin-top:-5px;
+  width:9px;height:9px;border:1.5px solid var(--muted);border-radius:50%;opacity:.85;pointer-events:none}
+.fxsearch::after{content:"";position:absolute;left:19px;top:50%;margin-top:3px;
+  width:5px;height:1.5px;background:var(--muted);transform:rotate(45deg);
+  transform-origin:left center;opacity:.85;pointer-events:none;border-radius:1px}
+:root[data-theme="light"] .fxsearch input{background:#fff}
+.fxcount{font-size:11px;color:var(--muted);letter-spacing:.04em;margin-top:16px}
+
+.fxwrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:18px;margin-top:18px}
+
+.fxc{background:var(--stone-2);border:1px solid var(--line);border-radius:14px;overflow:hidden;
+  transition:border-color .15s,box-shadow .15s}
+.fxc:hover{border-color:var(--red);box-shadow:0 4px 18px rgba(0,0,0,.06)}
+:root[data-theme="light"] .fxc{background:#fff;border-color:var(--line-lt)}
+
+/* Region stripe. The dossier splits into a Gulf cohort and a Europe/Americas one
+   that are scouted differently, so the grouping earns a visual channel rather than
+   another column. Kept to a 3px edge: the card's job is still the match result. */
+.fxc{border-left:3px solid transparent}
+.fxc.r-gulf{border-left-color:var(--gold)}
+.fxc.r-eu{border-left-color:var(--up)}
+.fxc.r-other{border-left-color:var(--line)}
+
+/* header: face, crest, name, meta */
+.fxhd{display:flex;align-items:center;gap:12px;padding:16px 18px 14px;
+  border-bottom:1px solid var(--line)}
+/* Portrait is cropped (cover), crests are letterboxed (contain) -- a shared rule
+   would squash one or the other, since TM portraits are 3:4 and crests square. */
+.fxface{width:38px;height:38px;flex:none;border-radius:9px;object-fit:cover;
+  background:var(--stone-3,var(--stone-2));border:1px solid var(--line)}
+.fxface.ini{display:inline-flex;align-items:center;justify-content:center;
+  font:800 13px/1 var(--sans);color:var(--muted);letter-spacing:.02em}
+.fxhd img:not(.fxface){width:26px;height:26px;object-fit:contain;flex:none}
+.fxhd .nm{font-weight:800;color:var(--ink);font-size:15px;line-height:1.3;min-width:0}
+.fxhd .nm small{display:block;font-weight:400;color:var(--muted);font-size:11.5px;margin-top:3px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* one match block */
+.fxm{padding:15px 18px 16px}
+.fxm + .fxm{border-top:1px solid var(--line)}
+.fxlab{font:800 9px/1 var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+  display:block;margin-bottom:12px}
+
+/* the fixture itself — stacked rows, not a cramped 3-column squeeze */
+.fxvs{display:flex;flex-direction:column;gap:8px}
+.fxteam{display:flex;align-items:center;gap:10px;min-width:0}
+.fxteam img{width:24px;height:24px;object-fit:contain;flex:none}
+.fxteam span{font-size:13.5px;color:var(--ink);font-weight:600;line-height:1.35;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+.fxteam.away span{color:var(--sand)}
+
+/* score sits to the right of each team row */
+.fxteam .sc1{font-family:var(--disp);font-size:17px;font-weight:800;font-variant-numeric:tabular-nums;
+  flex:none;color:var(--muted);min-width:22px;text-align:right}
+.fxteam.win .sc1{color:var(--ink)}
+.fxteam.win span{font-weight:800}
+
+.fxscore,.fxvs > .fxscore{display:none}          /* the old middle pill is gone */
+
+.fxstate{display:inline-flex;align-items:center;gap:6px;font:800 9.5px/1 var(--sans);
+  letter-spacing:.08em;text-transform:uppercase;padding:5px 9px;border-radius:20px;margin-bottom:11px}
+.fxstate.W{background:rgba(46,157,90,.13);color:#2e9d5a}
+.fxstate.D{background:rgba(122,114,110,.14);color:var(--muted)}
+.fxstate.L{background:rgba(200,16,46,.11);color:var(--red)}
+.fxstate.soon{background:rgba(200,16,46,.08);color:var(--red)}
+
+.fxmeta{margin-top:12px;padding-top:11px;border-top:1px dashed var(--line);
+  font-size:11px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;
+  font-variant-numeric:tabular-nums;line-height:1.5}
+.fxmeta b{color:var(--ink);font-weight:700}
+.fxnone{font-size:12px;color:var(--muted);padding:4px 0}
+
+.faico{width:34px;height:34px;flex:none;border-radius:8px;display:inline-flex;align-items:center;
+  justify-content:center;font:800 10px/1 var(--sans);letter-spacing:.05em;
+  background:var(--line);color:var(--muted)}
+.fxc .nm small .fa{color:var(--muted);font-weight:700}
+
+/* ---- fixtures sub-tabs + sort ---- */
+.fxsubs{display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:20px;
+  border-bottom:1px solid var(--line);padding-bottom:0}
+.fxsubs .sub{appearance:none;background:none;border:0;cursor:pointer;
+  font:800 12px/1 var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
+  padding:12px 2px 12px;margin-right:24px;border-bottom:2px solid transparent;transition:color .15s,border-color .15s}
+.fxsubs .sub:hover{color:var(--ink)}
+.fxsubs .sub.on{color:var(--red);border-bottom-color:var(--red)}
+.fxsubs .sub b{display:inline-block;margin-left:7px;font-size:11px;font-weight:700;letter-spacing:0;
+  background:var(--stone-2);color:var(--muted);border-radius:20px;padding:3px 8px}
+.fxsubs .sub.on b{background:rgba(200,16,46,.12);color:var(--red)}
+:root[data-theme="light"] .fxsubs .sub b{background:#f0ecea}
+.fxsort{margin-left:auto;padding-bottom:8px}
+.fxsort label{font:700 10px/1 var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+  display:inline-flex;align-items:center;gap:8px}
+.fxsort select{font:400 12.5px/1 var(--sans);color:var(--ink);background:var(--stone-2);
+  border:1px solid var(--line);border-radius:8px;padding:8px 10px;cursor:pointer}
+:root[data-theme="light"] .fxsort select{background:#fff}
+
+/* one match per card now, so it can breathe */
+.fxwhen{font-size:11.5px;color:var(--muted);margin-bottom:13px;display:flex;align-items:center;
+  gap:9px;flex-wrap:wrap;font-variant-numeric:tabular-nums}
+.fxwhen b{color:var(--ink);font-weight:700}
+.fxwhen .res{font:800 9.5px/1 var(--sans);letter-spacing:.08em;text-transform:uppercase;
+  padding:5px 9px;border-radius:20px}
+.fxwhen .res.W{background:rgba(46,157,90,.13);color:#2e9d5a}
+.fxwhen .res.D{background:rgba(122,114,110,.14);color:var(--muted)}
+.fxwhen .res.L{background:rgba(200,16,46,.11);color:var(--red)}
+.fxm{padding:16px 18px 18px}
+.fxlab,.fxstate{display:none}
