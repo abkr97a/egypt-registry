@@ -624,6 +624,14 @@ const NATBUCKETS=[
 // x-positions — three tables reading as three unrelated lists rather than one
 // page. Same reason Scouting mode carries a colgroup.
 const NTCOLS=`<colgroup><col class="c-pl"><col class="c-ag"><col class="c-sd"><col class="c-cp"></colgroup>`;
+// This table shipped without a thead, alone among the four views. Two columns of
+// bare numbers -- an age and a senior/youth pair -- sat unlabelled, so "21" and
+// "8 / 26" had to be guessed at. Not sortable, unlike the roster's: the buckets
+// are the sort, and a click that reordered rows across three groups would undo
+// the only structure the view has.
+const NTHEAD=`<thead><tr><th>Player</th><th class="r hide-s">Age</th>
+  <th class="hide-s">National sides · appearances</th>
+  <th class="r" title="Senior caps / youth appearances">Caps S/Y</th></tr></thead>`;
 function natBucket(p){
   const played=((MSTATS[p.tm_id]||{}).natl||[]).filter(x=>x.part==="P");
   const snr=[...new Set(played.filter(x=>isSenior(x.team)).map(x=>x.team))];
@@ -676,10 +684,10 @@ function drawNational(){
       <div class="ntgh"><b class="${key==="tied"?"sr":key==="egypt"?"eg":"y"}">${esc(label)}</b>
         <span>${g.length} player${g.length===1?"":"s"}</span></div>
       <p class="ntnote">${esc(note)}</p>
-      <table class="grid nttbl">${NTCOLS}<tbody>${g.map(p=>`<tr data-id="${esc(p.tm_id)}">
+      <table class="grid nttbl">${NTCOLS}${NTHEAD}<tbody>${g.map(p=>`<tr data-id="${esc(p.tm_id)}">
         <td><span class="who">${p.photo?`<img class="face" src="${esc(p.photo)}" alt="" loading="lazy">`
           :`<span class="face ini">${esc(initials(p.name))}</span>`}<span class="nm"><b>${esc(p.name)}</b>
-          <span>${esc(p.position||"")} · ${esc(p.club||"")}</span></span></span></td>
+          <span>${esc(p.position||"")} · ${esc(p.club||"")}${p.plays_in?` · ${esc(p.plays_in)}`:""}</span></span></span></td>
         <td class="r num hide-s">${esc(p.age||"—")}</td>
         <td class="sides hide-s"><span class="sidesw">${sides(p)}</span></td>
         <td class="r caps-c">${capsCell(p)}</td></tr>`).join("")}</tbody></table></div>`;

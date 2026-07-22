@@ -265,17 +265,25 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;min-width:940px}
 /* Fixed columns so the three bucket tables line up with each other. The badges
    take the slack, since that is the only column whose content genuinely varies
    in width — Salah carries five sides, most players one. */
-.nttbl{table-layout:fixed;min-width:940px}
-.nttbl col.c-pl{width:290px} .nttbl col.c-ag{width:56px}
-.nttbl col.c-sd{width:auto}  .nttbl col.c-cp{width:88px}
-/* 940, matching every other table on the page. 1080 was wider than the content
-   area at common window sizes, so the table overflowed and its row dividers were
-   cut off at the window edge — which reads as a broken line, not as a scroll.
-   The badges shrink instead (below), which is the right trade: five sides fitting
-   in 506px matters less than the table fitting the window. */
+.nttbl{table-layout:fixed;min-width:1040px}
+/* 360px matches Scouting mode's player column, so the two views line up when you
+   switch between them — and it fits the club plus the country, which this table
+   now shows too. The badges keep the slack. */
+.nttbl col.c-pl{width:360px} .nttbl col.c-ag{width:64px}
+.nttbl col.c-sd{width:auto}  .nttbl col.c-cp{width:96px}
+/* 1040, matching Scouting mode. An earlier 1080 overflowed the content area at
+   common window sizes and its row dividers were cut at the window edge, which
+   reads as a broken line rather than a scroll; the badges were tightened at the
+   same time, so the same content now fits comfortably inside this width. */
 /* The caps figure is the row's conclusion and belongs hard right, in line down
    the page. Left to size itself it drifted with the badge row's length. */
 .nttbl td.caps-c{white-space:nowrap}
+/* Not sticky, and not a button. Three bucket tables means three headers, and
+   sticky ones would pin on top of each other as you scroll between groups. These
+   label the columns and nothing more -- the buckets are the sort, so there is
+   nothing to click. */
+.nttbl thead th{position:static;cursor:default}
+.nttbl thead th:hover{color:var(--mut)}
 /* The flex box goes on an inner span, not on the td. display:flex on a table
    cell takes it out of table layout, so its bottom border no longer sits on the
    same baseline as its neighbours' and the row divider breaks into offset
