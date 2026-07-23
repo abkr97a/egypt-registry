@@ -103,7 +103,7 @@ function caps(p){
   // Appearances, not call-ups: sitting on the bench for a senior side does not
   // cap-tie anyone, and counting it would overstate the one number that matters.
   const played=g.filter(x=>x.part==="P");
-  return {
+  const c={
     senior:played.filter(x=>isSenior(x.team)).length,
     youth: played.filter(x=>isYouth(x.team)).length,
     // Named neither way. Shown rather than silently dropped, so a gap in the
@@ -112,6 +112,20 @@ function caps(p){
     total: g.length,
     teams:[...new Set(g.map(x=>x.team).filter(Boolean))],
   };
+  // TM states caps on the PROFILE and lists the matches separately, and for some
+  // players it publishes the first without the second: Hussein Mehasseb's profile
+  // says 2 caps for Egypt U20 and his match feed has no national games at all.
+  // Four players are in that state. Falling through to 0/0 said "never capped"
+  // about someone TM says is capped, so trust the stated figure when there are no
+  // rows to count -- and file it as YOUTH only when the named side is a youth one,
+  // because inventing a senior cap is the one error worth never making.
+  if(!c.total&&p.national_team&&/^\d+$/.test(String(p.caps||""))&&+p.caps>0){
+    const n=+p.caps;
+    if(isYouth(p.national_team)){ c.youth=n; c.stated=true; }
+    else { c.senior=n; c.stated=true; }
+    c.total=n; c.teams=[p.national_team];
+  }
+  return c;
 }
 function signal(p){
   const s=status(p);
@@ -386,7 +400,17 @@ function trBlock(p){
 // check it rather than take the number on trust.
 function natBlock(p){
   const g=(MSTATS[p.tm_id]||{}).natl||[];
-  if(!g.length)return "";
+  // Capped per his profile, but TM publishes no matches for those caps. Say that,
+  // rather than showing nothing: an empty section reads as "never played for
+  // anyone", which is the opposite of what his profile states.
+  if(!g.length){
+    const c=caps(p);
+    if(!c.stated)return "";
+    return `<div class="psec">National team</div>
+      <div class="verdict"><b class="${isYouth(p.national_team)?"ok":"sr"}">${c.total} cap${c.total===1?"":"s"} for ${esc(p.national_team)}</b>
+      — stated on his Transfermarkt profile, which publishes no match list for them.
+      ${isYouth(p.national_team)?"Youth caps do not cap-tie, so he remains selectable.":""}</div>`;
+  }
   const by=new Map();
   g.forEach(x=>{const k=x.team||"—";if(!by.has(k))by.set(k,[]);by.get(k).push(x);});
   const teams=[...by.entries()].sort((a,b)=>b[1].length-a[1].length);
@@ -505,7 +529,10 @@ function drawNav(){
   // Same rule the view applies, or the tab promises a row it will not draw.
   const withFix=DATA.filter(p=>NEXTM[p.tm_id]&&!isFree(p)).length;
   const withMatch=DATA.filter(p=>{const s=status(p);return s&&s.n;}).length;
-  const withNat=DATA.filter(p=>((MSTATS[p.tm_id]||{}).natl||[]).length).length;
+  // caps().total, not natl.length: four players are capped per their profile with
+  // no match list published, and counting rows alone dropped them from a view
+  // whose whole subject is who has played for whom.
+  const withNat=DATA.filter(p=>caps(p).total).length;
   // Four views, not six. Dual and Egypt-only were tabs AND a sidebar facet -- the
   // same cut of the same table, reachable two ways, each able to contradict the
   // other's state. They are a filter, so the filter keeps them; a view is a
@@ -645,7 +672,7 @@ function natBucket(p){
   return snr.every(t=>/^egypt/i.test(t))?"egypt":"tied";
 }
 function drawNational(){
-  const list=rows().filter(p=>((MSTATS[p.tm_id]||{}).natl||[]).length);
+  const list=rows().filter(p=>caps(p).total);
   $("count").innerHTML=`${list.length}<small>with caps</small>`;
   if(!list.length){
     $("body").innerHTML=`<div class="empty"><b>Nobody matches</b>No player in this filter has a national-team appearance.</div>`;
@@ -659,6 +686,11 @@ function drawNational(){
     const played=((MSTATS[p.tm_id]||{}).natl||[]).filter(x=>x.part==="P");
     const by=new Map();
     played.forEach(x=>{const t=(x.team||"").trim();if(!t)return;by.set(t,(by.get(t)||0)+1);});
+    // Capped per the profile with no match list published. Without this the badge
+    // cell is empty on a row that exists BECAUSE he is capped, which reads as a
+    // rendering fault rather than as a gap in TM's data.
+    const c=caps(p);
+    if(!by.size&&c.stated)by.set(p.national_team,c.total);
     // Abbreviate only when every side is the same country. Haissem Hassan has
     // Egypt plus France U17/U18 and Moustafa Moustafa has Egypt U23 plus Germany
     // U16 -- shortening those to "U17" beside a French flag invites reading it as
