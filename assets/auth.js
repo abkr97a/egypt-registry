@@ -39,6 +39,24 @@ const Auth = {
   get user() { return this.session && this.session.user; },
   get email() { return this.user && this.user.email; },
 
+  // Supabase keeps arbitrary sign-up fields on the user as user_metadata, so a
+  // display name costs no table, no migration and no extra request. It is the
+  // whole reason this stays simple.
+  get meta() { return (this.user && this.user.user_metadata) || {}; },
+  get name() { return (this.meta.name || "").trim(); },
+  // What to call someone, in the order of how personal it is. Falls back to the
+  // local part of the address so this never renders blank.
+  get displayName() {
+    return this.name || (this.email ? this.email.split("@")[0] : "");
+  },
+  // Two initials for the avatar. Same rule as the player initials in the
+  // workspace, so the two look like they belong to one product.
+  get initials() {
+    const s = this.displayName;
+    const parts = s.split(/[\s._-]+/).filter(Boolean);
+    return ((parts[0] || "?")[0] + (parts[1] ? parts[1][0] : "")).toUpperCase();
+  },
+
   /* ---------- REST ---------- */
   async call(path, { method = "GET", body, auth = true, prefer } = {}) {
     const h = {
@@ -69,7 +87,7 @@ const Auth = {
     return this.session;
   },
 
-  async signUp(email, password) {
+  async signUp(email, password, name) {
     // Invite-only for now, asked through a function rather than by reading the
     // table. The table stays unreadable — an invite list is a list of people's
     // email addresses, and any select policy lets it be enumerated one filter at
@@ -80,8 +98,11 @@ const Auth = {
     const ok = await this.call("/rest/v1/rpc/is_invited",
       { method: "POST", body: { addr: email }, auth: false }).catch(() => false);
     if (!ok) throw new Error("That email has not been invited yet.");
+    // `data` becomes user_metadata. No profile table, no second write that can
+    // half-succeed and leave an account with no name attached.
     const s = await this.call("/auth/v1/signup",
-      { method: "POST", body: { email, password }, auth: false });
+      { method: "POST", body: { email, password, data: { name: (name || "").trim() } },
+        auth: false });
     // Supabase returns a session immediately when email confirmation is off, and
     // only a user object when it is on. Handle both rather than assuming.
     if (s.access_token) {
@@ -89,6 +110,26 @@ const Auth = {
       return { signedIn: true };
     }
     return { signedIn: false, confirm: true };
+  },
+
+  // A login form with no way back in strands anyone who forgets their password,
+  // and the only recovery would be me editing the database by hand.
+  //
+  // Deliberately resolves the same way whether or not the address has an
+  // account: telling a stranger "no such user" turns this endpoint into a way to
+  // test whether a given person is a member.
+  async resetPassword(email) {
+    await this.call("/auth/v1/recover",
+      { method: "POST", body: { email }, auth: false }).catch(() => {});
+    return true;
+  },
+
+  // Used by the account panel to change the display name or the password. PUT
+  // /user takes either, so one call covers both.
+  async updateUser(patch) {
+    const u = await this.call("/auth/v1/user", { method: "PUT", body: patch });
+    if (this.session) this.save({ ...this.session, user: u });
+    return u;
   },
 
   async signOut() {
@@ -149,5 +190,169 @@ const Auth = {
   async deleteNote(id) {
     if (!this.user) return;
     await this.call(`/rest/v1/note?id=eq.${id}`, { method: "DELETE", prefer: "return=minimal" });
+  },
+};
+
+/* ---------------------------------------------------------------------------
+   The sign-in dialog, ONCE.
+
+   The landing page and the workspace each had their own copy of this markup and
+   its submit handler. Two copies of a login form is two places to fix every bug
+   and two chances for them to disagree -- and they already had: only one of them
+   knew about the name field the moment it was added. This is the shared one.
+
+   Modes: signin | signup | reset | account
+--------------------------------------------------------------------------- */
+const AuthUI = {
+  esc: s => String(s == null ? "" : s).replace(/[&<>"']/g,
+    c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])),
+
+  close() {
+    const b = document.getElementById("authbox"), s = document.getElementById("authscrim");
+    if (b) b.hidden = true;
+    if (s) s.classList.remove("on");
+  },
+
+  // onDone runs after a successful sign-in/sign-up so each page can react its
+  // own way -- the workspace redraws, the landing page navigates.
+  open(mode, onDone) {
+    const box = document.getElementById("authbox");
+    if (!box) return;
+    const E = this.esc;
+    const title = { signin: "Sign in", signup: "Create your account",
+                    reset: "Reset your password", account: "Your account" }[mode] || "Sign in";
+    const note = {
+      signin: "Your shortlist and notes follow your account.",
+      signup: "Sign-up is invite-only while this is new.",
+      reset: "We'll email you a link to set a new password.",
+      account: "",
+    }[mode];
+
+    const field = (id, label, type, extra = "") =>
+      `<label>${E(label)}<input id="${id}" type="${type}" ${extra}></label>`;
+
+    let body;
+    if (mode === "account") {
+      body = `
+        <div class="acctwho">
+          <span class="acctav">${E(Auth.initials)}</span>
+          <div><b>${E(Auth.displayName)}</b><small>${E(Auth.email)}</small></div>
+        </div>
+        <form id="authform">
+          ${field("authname", "Display name", "text", `value="${E(Auth.name)}" autocomplete="name" maxlength="60"`)}
+          ${field("authpass", "New password (leave blank to keep)", "password", 'autocomplete="new-password" minlength="6"')}
+          <div class="autherr" id="autherr" hidden></div>
+          <button class="authgo" type="submit" id="authgo">Save changes</button>
+        </form>
+        <div class="authalt"><a href="#" id="authout">Sign out</a></div>`;
+    } else if (mode === "reset") {
+      body = `
+        <form id="authform">
+          ${field("authemail", "Email", "email", 'autocomplete="email" required')}
+          <div class="autherr" id="autherr" hidden></div>
+          <button class="authgo" type="submit" id="authgo">Send reset link</button>
+        </form>
+        <div class="authalt">Remembered it? <a href="#" id="authswap">Sign in</a></div>`;
+    } else {
+      const signup = mode === "signup";
+      body = `
+        <form id="authform">
+          ${signup ? field("authname", "Your name", "text",
+              'autocomplete="name" required maxlength="60" placeholder="Amr Hassan"') : ""}
+          ${field("authemail", "Email", "email", 'autocomplete="email" required')}
+          ${field("authpass", "Password", "password",
+              `autocomplete="${signup ? "new-password" : "current-password"}" required minlength="6"`)}
+          ${signup ? `<p class="authhint">At least 6 characters.</p>` : ""}
+          <div class="autherr" id="autherr" hidden></div>
+          <button class="authgo" type="submit" id="authgo">${signup ? "Create account" : "Sign in"}</button>
+        </form>
+        <div class="authalt">${signup
+          ? `Already have an account? <a href="#" id="authswap">Sign in</a>`
+          : `Been invited? <a href="#" id="authswap">Create your account</a>
+             <span class="authsep">·</span><a href="#" id="authforgot">Forgot password?</a>`}</div>`;
+    }
+
+    box.innerHTML = `<div class="authhead"><b>${E(title)}</b>
+        <button class="x" id="authx" aria-label="Close">&times;</button></div>
+      ${note ? `<p class="authnote">${E(note)}</p>` : ""}${body}`;
+    box.hidden = false;
+    const scrim = document.getElementById("authscrim");
+    if (scrim) scrim.classList.add("on");
+
+    const $ = id => document.getElementById(id);
+    $("authx").onclick = () => this.close();
+    const first = $("authname") || $("authemail") || $("authpass");
+    if (first) first.focus();
+
+    const swap = $("authswap");
+    if (swap) swap.onclick = e => {
+      e.preventDefault();
+      this.open(mode === "signup" ? "signin" : "signup", onDone);
+    };
+    const forgot = $("authforgot");
+    if (forgot) forgot.onclick = e => { e.preventDefault(); this.open("reset", onDone); };
+    const out = $("authout");
+    if (out) out.onclick = async e => {
+      e.preventDefault();
+      await Auth.signOut();
+      this.close();
+      if (onDone) onDone();
+    };
+
+    $("authform").onsubmit = async e => {
+      e.preventDefault();
+      const err = $("autherr"), go = $("authgo");
+      err.hidden = true; go.disabled = true;
+      const label = go.textContent; go.textContent = "Working…";
+      try {
+        if (mode === "account") {
+          const patch = {};
+          const nm = ($("authname").value || "").trim();
+          const pw = $("authpass").value;
+          if (nm !== Auth.name) patch.data = { name: nm };
+          if (pw) {
+            if (pw.length < 6) throw new Error("Password must be at least 6 characters.");
+            patch.password = pw;
+          }
+          if (!Object.keys(patch).length) { this.close(); return; }
+          await Auth.updateUser(patch);
+        } else if (mode === "reset") {
+          await Auth.resetPassword($("authemail").value.trim());
+          box.innerHTML = `<div class="authhead"><b>Check your email</b>
+            <button class="x" id="authx2" aria-label="Close">&times;</button></div>
+            <p class="authnote">If that address has an account, a reset link is on its way.</p>`;
+          $("authx2").onclick = () => this.close();
+          return;
+        } else if (mode === "signup") {
+          const r = await Auth.signUp($("authemail").value.trim(), $("authpass").value,
+                                      $("authname").value);
+          if (!r.signedIn) {
+            box.innerHTML = `<div class="authhead"><b>Check your email</b>
+              <button class="x" id="authx2" aria-label="Close">&times;</button></div>
+              <p class="authnote">We sent a confirmation link to
+                ${E($("authemail") ? $("authemail").value : "")}. Open it, then sign in.</p>`;
+            $("authx2").onclick = () => this.close();
+            return;
+          }
+        } else {
+          await Auth.signIn($("authemail").value.trim(), $("authpass").value);
+        }
+        this.close();
+        if (onDone) onDone();
+      } catch (ex) {
+        // Supabase's raw messages are for developers. Translate the ones a
+        // person can actually act on and pass the rest through.
+        const raw = (ex && ex.message) || "";
+        err.textContent = /invalid login/i.test(raw)
+          ? "That email and password do not match."
+          : /already registered|already been/i.test(raw)
+          ? "That email already has an account — sign in instead."
+          : /weak|password/i.test(raw) && /6|short/i.test(raw)
+          ? "Password must be at least 6 characters."
+          : raw || "Something went wrong. Try again.";
+        err.hidden = false;
+        go.disabled = false; go.textContent = label;
+      }
+    };
   },
 };

@@ -38,6 +38,12 @@ main{max-width:1000px;margin:0 auto;padding:0 24px 80px}
   border:1px solid var(--line-2);border-radius:9px;padding:14px 20px}
 .secondary:hover{border-color:var(--red);color:var(--red)}
 
+/* Confirms which account you are in, under the buttons that change meaning
+   because of it. Hidden entirely when signed out rather than reserving space
+   for a message that does not exist. */
+.herowho{font:600 12px/1.4 var(--sans);color:var(--mut);margin:14px 0 0}
+.herowho[hidden]{display:none}
+
 /* ---------- stats ----------
    Read from the same JSON the workspace loads, so this page cannot quote a
    number the site does not contain. */

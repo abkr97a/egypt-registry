@@ -32,10 +32,14 @@
     <p class="lede">Abroad and at home — squad status, recent form, market value and
       eligibility under FIFA Article&nbsp;9. Built by reading public football data,
       club by club, across 78 countries.</p>
+    <!-- Both are rewritten by drawAccount() once the session is known. The
+         signed-out wording is the default because a first visit is signed out,
+         and it must not flash the wrong invitation while auth loads. -->
     <div class="cta">
-      <a class="primary" href="app.html">Open the workspace</a>
+      <a class="primary" href="app.html" id="herogo">Open the workspace</a>
       <button class="secondary" id="herojoin">Create your account</button>
     </div>
+    <p class="herowho" id="herowho" hidden></p>
   </section>
 
   <!-- Live from the same data the workspace loads, so this page can never quote a
