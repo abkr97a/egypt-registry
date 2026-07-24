@@ -5,13 +5,28 @@
 
    It reuses workspace.css for tokens, the sign-in dialog and the theme, so the
    two pages cannot drift apart in colour or type -- the accent, the neutrals and
-   the dark/light behaviour are defined once. */
+   the dark/light behaviour are defined once.
+
+   PALETTE. The crimson is already the workspace accent and comes from the
+   Egyptian flag. Gold joins it here for one job only: marking the account layer,
+   so "what you get by signing in" is a different colour from "what the site is".
+   The eagle on the flag is gold, so the pair is the flag's own rather than a
+   decorative choice -- but the flag's white band is deliberately NOT used as a
+   third accent. Red-white-black in stripes would make this a flag page instead
+   of a football one. */
+:root{
+  /* Deeper and warmer than the workspace crimson so large fills do not vibrate
+     against the ground the way the UI accent does at button size. */
+  --eg-red:#c8102e;
+  --eg-gold:#d4a537;
+  --eg-gold-dim:#8c6d22;
+}
 
 body.home{overflow:auto;background:var(--bg)}
-main{max-width:1000px;margin:0 auto;padding:0 24px 80px}
+main{max-width:1060px;margin:0 auto;padding:0 24px 80px}
 
 /* ---------- nav ---------- */
-.hnav{max-width:1000px;margin:0 auto;padding:22px 24px;
+.hnav{max-width:1060px;margin:0 auto;padding:22px 24px;
   display:flex;align-items:center;justify-content:space-between;gap:16px}
 .hbrand b{display:block;font:800 16px/1.15 var(--sans);letter-spacing:-.015em}
 .hbrand span{display:block;font:600 9.5px/1 var(--sans);letter-spacing:.2em;
@@ -23,29 +38,60 @@ main{max-width:1000px;margin:0 auto;padding:0 24px 80px}
   border-radius:8px;padding:9px 14px;white-space:nowrap}
 .hbtn:hover{border-color:var(--red);color:var(--red)}
 
-/* ---------- hero ---------- */
-.hero{padding:64px 0 44px;max-width:44ch}
-.eyebrow{font:700 10.5px/1 var(--sans);letter-spacing:.19em;text-transform:uppercase;
+/* ---------- hero ----------
+   The photographs are the thesis: this page is about a specific set of real
+   people, and every face in the mosaic is a row the reader can go and open. */
+.hero{position:relative;padding:60px 0 48px;isolation:isolate;overflow:hidden;
+  border-radius:20px;margin-bottom:34px}
+.mosaic{position:absolute;inset:0;z-index:-2;
+  display:grid;grid-template-columns:repeat(6,1fr);gap:2px}
+.mosaic img{width:100%;height:100%;object-fit:cover;object-position:center 18%;
+  filter:grayscale(1) contrast(1.05)}
+/* The scrim carries the crimson rather than being neutral black: a grey wash
+   over faces reads as a stock hero, and the tint ties the photographs to the
+   accent they sit under. Two layers -- a colour wash and a left-weighted fade --
+   so the text side stays near-solid while the right keeps some of the image. */
+.hero::before{content:"";position:absolute;inset:0;z-index:-1;
+  background:
+    linear-gradient(90deg,var(--bg) 0%,var(--bg) 34%,color-mix(in srgb,var(--bg) 78%,transparent) 62%,
+      color-mix(in srgb,var(--bg) 62%,transparent) 100%),
+    linear-gradient(180deg,color-mix(in srgb,var(--eg-red) 26%,transparent) 0%,
+      color-mix(in srgb,var(--bg) 88%,transparent) 100%)}
+.herotext{position:relative;padding:0 30px;max-width:47ch}
+
+.eyebrow{display:flex;align-items:center;gap:9px;
+  font:700 10.5px/1 var(--sans);letter-spacing:.19em;text-transform:uppercase;
   color:var(--red);margin:0 0 20px}
-.hero h1{font-size:clamp(34px,6vw,58px);font-weight:800;letter-spacing:-.03em;
-  line-height:1.03;margin:0 0 20px;text-wrap:balance}
-.lede{font-size:16px;line-height:1.6;color:var(--ink-2);margin:0 0 30px;max-width:56ch}
+/* A single crimson dot instead of a flag or an emoji. It marks the line as a
+   label without decorating it. */
+.pip{width:7px;height:7px;border-radius:50%;background:var(--eg-red);
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--eg-red) 18%,transparent)}
+.hero h1{font-size:clamp(36px,6.4vw,62px);font-weight:800;letter-spacing:-.035em;
+  line-height:1.02;margin:0 0 20px;text-wrap:balance}
+/* The second line is the claim -- "we can find" is the whole premise of the
+   project -- so it carries the accent and a lighter, italic weight. The contrast
+   between the two lines is the type doing the emphasis, not a highlight box. */
+.hero h1 em{font-style:italic;font-weight:600;color:var(--eg-red);
+  letter-spacing:-.02em}
+:root[data-theme="light"] .hero h1 em{color:var(--red)}
+.lede{font-size:16px;line-height:1.62;color:var(--ink-2);margin:0 0 30px;max-width:54ch}
 .cta{display:flex;gap:10px;flex-wrap:wrap}
 .primary{background:var(--red);color:#fff;font:700 14px/1 var(--sans);
   padding:14px 22px;border-radius:9px;text-decoration:none;display:inline-block}
 .primary:hover{filter:brightness(1.08)}
 .secondary{font:600 14px/1 var(--sans);color:var(--ink-2);
-  border:1px solid var(--line-2);border-radius:9px;padding:14px 20px}
+  border:1px solid var(--line-2);border-radius:9px;padding:14px 20px;
+  background:color-mix(in srgb,var(--surface) 70%,transparent)}
 .secondary:hover{border-color:var(--red);color:var(--red)}
 
+/* Answers "do I have to sign in first?" before it is asked. Quiet -- it removes
+   a worry rather than making a claim, so it must not read as a sales line. */
+.herofree{font-size:12.5px;line-height:1.5;color:var(--mut);margin:16px 0 0;max-width:46ch}
 /* Confirms which account you are in, under the buttons that change meaning
    because of it. Hidden entirely when signed out rather than reserving space
    for a message that does not exist. */
 .herowho{font:600 12px/1.4 var(--sans);color:var(--mut);margin:14px 0 0}
 .herowho[hidden],.herofree[hidden]{display:none}
-/* Answers "do I have to sign in first?" before it is asked. Quiet -- it removes
-   a worry rather than making a claim, so it must not read as a sales line. */
-.herofree{font-size:12.5px;line-height:1.5;color:var(--mut);margin:14px 0 0;max-width:46ch}
 
 /* ---------- stats ----------
    Read from the same JSON the workspace loads, so this page cannot quote a
@@ -71,6 +117,46 @@ main{max-width:1000px;margin:0 auto;padding:0 24px 80px}
 .poplink{font:700 13px/1 var(--sans);color:var(--red);text-decoration:none}
 .poplink:hover{text-decoration:underline}
 
+/* ---------- what an account changes ----------
+   Two columns rather than a feature list, because the honest answer is a
+   comparison: almost everything is open, and two things are not. A single list
+   of "features" would bury that. */
+.acct{margin-bottom:56px}
+.acct h2{font-size:26px;font-weight:800;letter-spacing:-.025em;margin:0 0 10px}
+.acctlede{font-size:14px;line-height:1.6;color:var(--ink-2);margin:0 0 24px;max-width:66ch}
+.acctgrid{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+.acol{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:24px}
+/* The account column is the one carrying the gold. It is raised rather than
+   merely tinted -- a border colour alone was not enough to separate the two at a
+   glance, and the whole point of this section is that they differ. */
+.acol.is-acct{border-color:color-mix(in srgb,var(--eg-gold) 42%,var(--line));
+  background:linear-gradient(180deg,color-mix(in srgb,var(--eg-gold) 7%,var(--surface)) 0%,
+    var(--surface) 46%)}
+.acolh{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+.atag{font:800 10px/1 var(--sans);letter-spacing:.14em;text-transform:uppercase;
+  padding:7px 10px;border-radius:6px}
+.atag.free{color:var(--ink-2);background:var(--raised);border:1px solid var(--line-2)}
+.atag.member{color:#1c1405;background:var(--eg-gold)}
+:root[data-theme="light"] .atag.member{color:#241a06}
+.aplus{font-size:12px;color:var(--mut);font-style:italic}
+
+.alist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:15px}
+.alist li{display:block;padding-left:20px;position:relative}
+/* A check for what is included. Drawn in CSS rather than as an emoji: an emoji
+   here would be the one piece of the page that does not respond to the theme. */
+.alist li::before{content:"";position:absolute;left:0;top:5px;width:9px;height:5px;
+  border-left:2px solid var(--mut);border-bottom:2px solid var(--mut);
+  transform:rotate(-45deg)}
+.is-acct .alist li::before{border-color:var(--eg-gold)}
+.alist b{display:block;font-size:13.5px;font-weight:700;margin-bottom:3px}
+.alist span{display:block;font-size:12.5px;line-height:1.55;color:var(--mut)}
+.alist i{font-style:normal;font-variant-numeric:tabular-nums;color:var(--ink-2);font-weight:700}
+
+.acctgo{width:100%;margin-top:22px;padding:13px;border-radius:9px;
+  background:var(--eg-gold);color:#1c1405;font:800 13.5px/1 var(--sans)}
+.acctgo:hover{filter:brightness(1.06)}
+.acctnote{font-size:11.5px;line-height:1.5;color:var(--mut);margin:11px 0 0;text-align:center}
+
 /* ---------- features ---------- */
 .feats{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-bottom:52px}
 .feat h3{font-size:14.5px;font-weight:800;margin:0 0 8px}
@@ -86,8 +172,32 @@ main{max-width:1000px;margin:0 auto;padding:0 24px 80px}
 .brandlink{text-decoration:none;color:inherit;display:block}
 .brandlink:hover b{color:var(--red)}
 
+/* In light mode the photographs sit under a light ground, so the scrim has to
+   lighten rather than darken or the faces turn to mud. */
+:root[data-theme="light"] .mosaic img{filter:grayscale(1) contrast(.95) brightness(1.06)}
+@media (prefers-color-scheme:light){
+  :root:not([data-theme="dark"]) .mosaic img{filter:grayscale(1) contrast(.95) brightness(1.06)}
+}
+
+@media(max-width:900px){
+  .acctgrid{grid-template-columns:1fr}
+  /* The account column leads on a phone: someone who has scrolled this far is
+     asking the question the section answers. */
+  .acol.is-acct{order:-1}
+}
 @media(max-width:820px){
   .two,.feats{grid-template-columns:1fr}
   .stats{grid-template-columns:repeat(2,1fr)}
-  .hero{padding:44px 0 32px}
+  .hero{padding:44px 0 34px;border-radius:16px}
+  .herotext{padding:0 20px}
+  /* Fewer, larger tiles: twelve portraits at phone width are unreadable smudges
+     and cost twelve requests to say nothing. */
+  .mosaic{grid-template-columns:repeat(3,1fr)}
+  .mosaic img:nth-child(n+7){display:none}
+}
+@media(prefers-reduced-motion:no-preference){
+  .hero h1,.lede,.cta{animation:rise .5s cubic-bezier(.2,.7,.3,1) both}
+  .lede{animation-delay:.06s}
+  .cta{animation-delay:.12s}
+  @keyframes rise{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
 }

@@ -28,7 +28,22 @@ const authOpen = mode => AuthUI.open(mode, () => {
 function drawAccount() {
   const b = $("account"), join = $("herojoin"), go = $("herogo"), who = $("herowho");
   const free = $("herofree");
+  // The account section's own button and note. It says "Create your account"
+  // to a stranger and must not still say that to someone already signed in --
+  // the same bug the hero button had, in a second place.
+  const aj = $("acctjoin"), an = $("acctnote");
   const inSession = !!(Auth.user);
+
+  if (aj) {
+    aj.textContent = inSession ? "Open your workspace" : "Create your account";
+    aj.onclick = inSession ? () => { location.href = "app.html"; }
+                           : () => authOpen("signup");
+  }
+  if (an) {
+    an.textContent = inSession
+      ? "You are signed in — your shortlist and notes are already saved."
+      : "Invite-only while this is new. Email and a password — nothing else is asked for.";
+  }
 
   if (b) {
     if (inSession) {
@@ -88,6 +103,9 @@ async function counts() {
   set("n-dual", dual);
   set("c-abroad", n - egypt);
   set("c-egypt", egypt);
+  // "All 805 of them" in the no-account column. Read from the same file as the
+  // rest, so the sentence cannot outlive the number.
+  set("a-total", n);
 }
 
 Auth.load();

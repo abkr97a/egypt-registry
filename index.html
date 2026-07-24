@@ -27,25 +27,44 @@
 
 <main>
   <section class="hero">
-    <p class="eyebrow">Egyptian National Team · Scouting</p>
-    <h1>Every Egyptian footballer<br>we can find.</h1>
-    <p class="lede">Abroad and at home — squad status, recent form, market value and
-      eligibility under FIFA Article&nbsp;9. Built by reading public football data,
-      club by club, across 78 countries.</p>
-    <!-- Both are rewritten by drawAccount() once the session is known. The
-         signed-out wording is the default because a first visit is signed out,
-         and it must not flash the wrong invitation while auth loads. -->
-    <div class="cta">
-      <a class="primary" href="app.html" id="herogo">Open the workspace</a>
-      <button class="secondary" id="herojoin">Create your account</button>
+    <!-- Real portraits from the database itself, not stock photography. The
+         subject of this page is these people, and every face here is a row a
+         reader can go and open. Low opacity and a heavy scrim: it is a texture
+         behind the headline, not a gallery competing with it.
+         aria-hidden because the names are decoration here; they are content in
+         the workspace. -->
+    <div class="mosaic" aria-hidden="true">
+      <img src="img/players/148455.jpg" alt="" loading="eager">
+      <img src="img/players/445939.jpg" alt="" loading="eager">
+      <img src="img/players/160438.jpg" alt="" loading="lazy">
+      <img src="img/players/234189.jpg" alt="" loading="lazy">
+      <img src="img/players/320722.jpg" alt="" loading="lazy">
+      <img src="img/players/124578.jpg" alt="" loading="lazy">
+      <img src="img/players/123551.jpg" alt="" loading="lazy">
+      <img src="img/players/105590.jpg" alt="" loading="lazy">
+      <img src="img/players/1162782.jpg" alt="" loading="lazy">
+      <img src="img/players/172623.jpg" alt="" loading="lazy">
+      <img src="img/players/134573.jpg" alt="" loading="lazy">
+      <img src="img/players/122980.jpg" alt="" loading="lazy">
     </div>
-    <!-- The whole database has always been readable without an account, but
-         nothing said so: two buttons side by side, one of them "Create your
-         account", read as a login wall. An account only adds what has to be
-         yours -- notes and a shortlist that follows you between devices. -->
-    <p class="herofree" id="herofree">No account needed to browse — sign in only
-      to keep private notes and a shortlist across devices.</p>
-    <p class="herowho" id="herowho" hidden></p>
+
+    <div class="herotext">
+      <p class="eyebrow"><span class="pip"></span>Egyptian National Team · Scouting</p>
+      <h1>Every Egyptian footballer<br><em>we can find.</em></h1>
+      <p class="lede">Abroad and at home — squad status, recent form, market value and
+        eligibility under FIFA Article&nbsp;9. Built by reading public football data,
+        club by club, across 78 countries.</p>
+      <!-- Both are rewritten by drawAccount() once the session is known. The
+           signed-out wording is the default because a first visit is signed out,
+           and it must not flash the wrong invitation while auth loads. -->
+      <div class="cta">
+        <a class="primary" href="app.html" id="herogo">Open the workspace</a>
+        <button class="secondary" id="herojoin">Create your account</button>
+      </div>
+      <p class="herofree" id="herofree">No account needed to browse — sign in only
+        to keep private notes and a shortlist across devices.</p>
+      <p class="herowho" id="herowho" hidden></p>
+    </div>
   </section>
 
   <!-- Live from the same data the workspace loads, so this page can never quote a
@@ -82,16 +101,56 @@
     </article>
   </section>
 
+  <!-- What an account actually changes, side by side.
+       This was one sentence in the hero, which left the honest answer — that
+       everything is readable without signing up — competing with a "Create your
+       account" button for attention. Two columns state it plainly: the whole
+       database on the left, the things that must be YOURS on the right. -->
+  <section class="acct" aria-labelledby="acct-h">
+    <h2 id="acct-h">Do you need an account?</h2>
+    <p class="acctlede">No — not to browse. Everything below the line on the left
+      is open to anyone who opens the page. An account adds the two things that
+      have to belong to a person rather than to the site.</p>
+
+    <div class="acctgrid">
+      <div class="acol">
+        <div class="acolh"><span class="atag free">No account</span></div>
+        <ul class="alist">
+          <li><b>Every player</b><span>All <i id="a-total">—</i> of them, home and abroad, with no sign-up and no limit.</span></li>
+          <li><b>Form and match data</b><span>Last 14 club games, minutes, goals, assists, clean sheets and goals conceded.</span></li>
+          <li><b>Eligibility</b><span>Senior caps counted from match records — who Egypt can still select, and who is cap-tied.</span></li>
+          <li><b>Fixtures and calendar</b><span>Next match per club, grouped by date in Cairo time.</span></li>
+          <li><b>Market value history</b><span>The full valuation curve, not just today's figure.</span></li>
+          <li><b>Search and filters</b><span>By region, club, position, age, caps and form.</span></li>
+        </ul>
+      </div>
+
+      <div class="acol is-acct">
+        <div class="acolh"><span class="atag member">With an account</span>
+          <span class="aplus">everything on the left, plus</span></div>
+        <ul class="alist">
+          <li><b>Your shortlist</b><span>Star any player. The list follows your account to any device — phone, laptop, anywhere you sign in.</span></li>
+          <li><b>Private notes</b><span>Write what you saw at a match. Notes are yours alone; the database enforces it with row-level security, not the page.</span></li>
+          <li><b>Filter to your list</b><span>Every view — roster, fixtures, national teams — narrows to the players you are tracking.</span></li>
+          <li><b>Share a shortlist</b><span>Send a colleague a link to the exact set of players you are looking at.</span></li>
+        </ul>
+        <button class="acctgo" id="acctjoin">Create your account</button>
+        <p class="acctnote" id="acctnote">Invite-only while this is new. Email and a
+          password — nothing else is asked for.</p>
+      </div>
+    </div>
+  </section>
+
   <section class="feats">
-    <div class="feat"><h3>Track players</h3>
-      <p>Star anyone. Your shortlist follows your account to any device, and every
-        view — form, fixtures, caps — narrows to it.</p></div>
-    <div class="feat"><h3>Private notes</h3>
-      <p>Write what you saw. Notes are yours alone: the database enforces it, not
-        the page.</p></div>
+    <div class="feat"><h3>Read club by club</h3>
+      <p>315 league tiers across 78 countries, swept squad by squad — because a
+        dual national's Egyptian passport is often not the flag on his profile.</p></div>
+    <div class="feat"><h3>Article 9, from the record</h3>
+      <p>A senior cap for another country ends eligibility. It is counted from
+        match appearances, never from a label — labels have been wrong.</p></div>
     <div class="feat"><h3>Checked, not assumed</h3>
-      <p>Eighteen consistency checks run on every build. A senior cap for another
-        country is counted from match records, never from a label.</p></div>
+      <p>Twenty-one consistency checks run on every build. Each one encodes a bug
+        that once reached the live site looking perfectly plausible.</p></div>
   </section>
 
   <footer class="hfoot">
