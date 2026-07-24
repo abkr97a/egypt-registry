@@ -27,6 +27,7 @@ const authOpen = mode => AuthUI.open(mode, () => {
    there is one place where signed-in and signed-out are decided. */
 function drawAccount() {
   const b = $("account"), join = $("herojoin"), go = $("herogo"), who = $("herowho");
+  const free = $("herofree");
   const inSession = !!(Auth.user);
 
   if (b) {
@@ -56,6 +57,9 @@ function drawAccount() {
   }
 
   if (go) go.textContent = inSession ? "Open the workspace" : "Browse the workspace";
+  // "No account needed" is an answer to a question you stop asking once you have
+  // one, so it goes when you sign in.
+  if (free) free.hidden = inSession;
   if (who) {
     who.hidden = !inSession;
     if (inSession) who.textContent = `Signed in as ${Auth.displayName} · ${Auth.email}`;

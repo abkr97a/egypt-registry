@@ -42,7 +42,10 @@ main{max-width:1000px;margin:0 auto;padding:0 24px 80px}
    because of it. Hidden entirely when signed out rather than reserving space
    for a message that does not exist. */
 .herowho{font:600 12px/1.4 var(--sans);color:var(--mut);margin:14px 0 0}
-.herowho[hidden]{display:none}
+.herowho[hidden],.herofree[hidden]{display:none}
+/* Answers "do I have to sign in first?" before it is asked. Quiet -- it removes
+   a worry rather than making a claim, so it must not read as a sales line. */
+.herofree{font-size:12.5px;line-height:1.5;color:var(--mut);margin:14px 0 0;max-width:46ch}
 
 /* ---------- stats ----------
    Read from the same JSON the workspace loads, so this page cannot quote a
