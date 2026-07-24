@@ -374,7 +374,20 @@ function stripHTML(p,n){
   // left, which is the same misalignment as a short strip.
   const w=`style="width:${n*12+(n-1)*3}px"`;
   if(!sq.length)return `<span class="strip nostrip" ${w}>—</span>`;
-  return `<span class="strip" ${w}>${sq.map(x=>{
+  // PAD SHORT STRIPS. 59 players have fewer than ten matches on record -- most
+  // of the domestic additions do -- and the strip reserves the full width but
+  // only draws what exists. Packed left by inline-flex, a six-block strip left
+  // its gap on the RIGHT, so the newest match sat in a different column on every
+  // row and the whole block read as ragged.
+  //
+  // The blanks go at the START because the strip runs oldest to newest: the
+  // missing games are the older ones we have no record of, and the newest match
+  // must land on the same edge in every row for the column to mean anything.
+  // Rendered as empty slots, not as a state -- absence of a record is not the
+  // same fact as "not in the squad", which has its own grey block.
+  const pad=Math.max(0,n-sq.length);
+  const blanks='<i class="pad" aria-hidden="true"></i>'.repeat(pad);
+  return `<span class="strip" ${w}>${blanks}${sq.map(x=>{
     const hit=(x.g||0)+(x.a||0)>0;
     // A game for a club he has since left is a different fact to a game for his
     // current one, and reading a whole strip as "his form here" when half of it

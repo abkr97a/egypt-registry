@@ -231,6 +231,12 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;min-width:940px}
    fault rather than as "this player has less history". Blocks stay left-aligned
    so the newest sits in the same place on every row. */
 .strip{display:inline-flex;gap:3px}
+/* A slot with no match on record. Occupies the block's space and draws nothing,
+   so a short strip still puts its newest game in the same column as a full one.
+   Deliberately invisible rather than a faint outline: an outline would read as a
+   fourth state beside played/benched/out, and "we have no record" is not a
+   thing that happened to the player. */
+.strip i.pad{visibility:hidden}
 .strip.nostrip{align-items:center;color:var(--mut)}
 /* One width for every block, starred or not. Widening only the starred ones made
    each strip a different length and knocked the rows out of alignment down the
