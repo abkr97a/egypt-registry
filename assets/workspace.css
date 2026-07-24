@@ -41,9 +41,16 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 /* ---------- chrome ---------- */
 .app{display:grid;grid-template-columns:var(--side) 1fr;height:100vh}
 
+/* The crimson rule at the top. The landing page carries the flag's red and gold
+   openly and the workspace had no trace of either -- two pages of one product
+   should not look like two products. Three pixels on the chrome is enough to say
+   it; the accent never goes on the rows, where it would compete with the data.
+   Declared HERE rather than in a second .side rule so the border participates in
+   this element's own box, inside the 100vh grid track. */
 .side{background:var(--surface);border-right:1px solid var(--line);
+  border-top:3px solid var(--red);
   display:flex;flex-direction:column;overflow:hidden}
-.brand{padding:16px 18px 14px;border-bottom:1px solid var(--line)}
+.brand{padding:16px 18px 14px;border-bottom:1px solid var(--line);position:relative}
 .brand b{display:block;font:800 15px/1.15 var(--sans);letter-spacing:-.015em}
 .brand span{display:block;font:600 9.5px/1 var(--sans);letter-spacing:.2em;
   text-transform:uppercase;color:var(--red);margin-top:6px}
