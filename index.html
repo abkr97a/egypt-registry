@@ -40,6 +40,9 @@
       <div class="search">
         <input id="q" type="search" placeholder="Search player, club, country…" aria-label="Search">
       </div>
+      <!-- Signed-out: "Sign in". Signed-in: the account menu. Drawn by JS so a
+           visitor with no network still gets a working page. -->
+      <button class="tgl" id="account">Sign in</button>
       <button class="tgl" id="theme" aria-label="Toggle theme">◐</button>
     </header>
     <div class="body" id="body"></div>
@@ -49,6 +52,13 @@
 <div class="scrim" id="scrim"></div>
 <aside class="panel" id="panel" aria-label="Player detail"></aside>
 
+<!-- Sign-in dialog. Empty until opened; nothing renders for a signed-out
+     visitor who never clicks it. -->
+<div class="scrim" id="authscrim"></div>
+<div class="authbox" id="authbox" role="dialog" aria-label="Sign in" hidden></div>
+
+<script src="assets/supabase-config.js"></script>
+<script src="assets/auth.js"></script>
 <script src="assets/workspace.js"></script>
 </body>
 </html>

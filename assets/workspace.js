@@ -44,8 +44,15 @@ function listSet(s){
 let SHORT=new Set();
 const isSaved=p=>SHORT.has(p.tm_id);
 function toggleSave(id){
-  SHORT.has(id)?SHORT.delete(id):SHORT.add(id);
+  const adding=!SHORT.has(id);
+  adding?SHORT.add(id):SHORT.delete(id);
   listSet(SHORT);
+  // Mirror to the server when signed in, and do not wait for it. The star must
+  // respond instantly; if the write fails the local list is still correct and the
+  // next sign-in merges both directions.
+  if(typeof Auth!=="undefined"&&Auth.user){
+    (adding?Auth.track(id):Auth.untrack(id)).catch(()=>{});
+  }
   // Unsaving the LAST player must also release the saved-only filter. The toggle
   // hides itself when the list is empty, so leaving the flag set left the page
   // filtered to nothing with no visible control to undo it -- an empty screen and
@@ -938,6 +945,104 @@ function drawSavedToggle(){
 // counting against a filter the toggle is about to clear.
 function draw(){ drawSavedToggle(); drawNav(); drawFilters(); drawBody(); }
 
+/* ---------- accounts ----------
+   Signing in is optional and stays optional. Everything on this page works
+   signed out, against localStorage, exactly as it did before accounts existed;
+   an account moves the shortlist to the server so it survives a cleared browser
+   and follows you to another device, and unlocks notes.
+
+   That is why nothing here blocks: a scouting page that will not render because
+   a database is slow is worse than one with no accounts at all. */
+function authClose(){ $("authbox").hidden=true; $("authscrim").classList.remove("on"); }
+
+function authOpen(mode){
+  const box=$("authbox"), signup=mode==="signup";
+  box.innerHTML=`
+    <div class="authhead">
+      <b>${signup?"Create your account":"Sign in"}</b>
+      <button class="x" id="authx" aria-label="Close">×</button>
+    </div>
+    <p class="authnote">${signup
+      ? "Sign-up is invite-only while this is new."
+      : "Your saved players and notes follow your account."}</p>
+    <form id="authform">
+      <label>Email<input id="authemail" type="email" autocomplete="email" required></label>
+      <label>Password<input id="authpass" type="password" autocomplete="${signup?"new-password":"current-password"}" required minlength="6"></label>
+      <div class="autherr" id="autherr" hidden></div>
+      <button class="authgo" type="submit" id="authgo">${signup?"Create account":"Sign in"}</button>
+    </form>
+    <div class="authalt">${signup
+      ? `Already have an account? <a href="#" id="authswap">Sign in</a>`
+      : `Been invited? <a href="#" id="authswap">Create your account</a>`}</div>`;
+  box.hidden=false;
+  $("authscrim").classList.add("on");
+  $("authemail").focus();
+  $("authx").onclick=authClose;
+  $("authswap").onclick=e=>{e.preventDefault();authOpen(signup?"signin":"signup");};
+  $("authform").onsubmit=async e=>{
+    e.preventDefault();
+    const err=$("autherr"), go=$("authgo");
+    err.hidden=true; go.disabled=true; go.textContent="Working…";
+    try{
+      const email=$("authemail").value.trim(), pass=$("authpass").value;
+      if(signup){
+        const r=await Auth.signUp(email,pass);
+        if(!r.signedIn){
+          box.innerHTML=`<div class="authhead"><b>Check your email</b>
+            <button class="x" id="authx" aria-label="Close">×</button></div>
+            <p class="authnote">We sent a confirmation link to ${esc(email)}. Open it, then sign in.</p>`;
+          $("authx").onclick=authClose;
+          return;
+        }
+      } else {
+        await Auth.signIn(email,pass);
+      }
+      authClose();
+      await afterSignIn();
+    }catch(ex){
+      err.textContent=ex.message||"Could not sign in.";
+      err.hidden=false;
+      go.disabled=false; go.textContent=signup?"Create account":"Sign in";
+    }
+  };
+}
+
+/* Merge, never replace. Someone who starred players signed out, then signs in,
+   must not lose them -- and the server list must not be lost either. Both
+   directions are pushed so the two agree afterwards. */
+async function afterSignIn(){
+  try{
+    const server=await Auth.tracked();
+    if(server){
+      const local=new Set(SHORT);
+      for(const id of local) if(!server.has(id)) await Auth.track(id);
+      SHORT=new Set([...server,...local]);
+      listSet(SHORT);
+    }
+  }catch(_){ /* offline: keep the local list, try again next sign-in */ }
+  drawAccount();
+  draw();
+}
+
+function drawAccount(){
+  const b=$("account");
+  if(!b)return;
+  if(Auth.user){
+    b.textContent=Auth.email.split("@")[0];
+    b.title=`Signed in as ${Auth.email} — click to sign out`;
+    b.onclick=async()=>{
+      if(!confirm(`Sign out of ${Auth.email}?`))return;
+      await Auth.signOut();
+      drawAccount();
+      draw();
+    };
+  } else {
+    b.textContent="Sign in";
+    b.title="Sign in to keep your shortlist and notes";
+    b.onclick=()=>authOpen("signin");
+  }
+}
+
 async function boot(){
   const load=n=>fetch(`data/${n}.json`).then(r=>r.json()).catch(()=>({}));
   [DATA,MSTATS,CRESTS,NEXTM,NATIDS]=await Promise.all(
@@ -950,6 +1055,18 @@ async function boot(){
   DATA=DATA||[];
 
   SHORT=listGet();
+
+  // Restore a session if there is one, then draw the account button. Deliberately
+  // NOT awaited before the first draw below: the page must paint from the JSON it
+  // already has, whether or not Supabase answers.
+  Auth.load();
+  drawAccount();
+  $("authscrim").onclick=authClose;
+  if(Auth.session){
+    Auth.refresh()
+      .then(s=>{ drawAccount(); return s?afterSignIn():null; })
+      .catch(()=>{});
+  }
   // A shared list arrives as ?list=id,id. MERGED, not replaced: opening a
   // colleague's link must not wipe your own saves, and a replace is
   // unrecoverable — there is no server copy to restore from.
