@@ -866,9 +866,14 @@ function agendaHTML(list){
       </div>
       <div class="agrows">${d.items.map(({p,f})=>{
         const crest=CRESTS[f.oid]?`<img class="cc" src="${esc(CRESTS[f.oid])}" alt="" loading="lazy">`:"";
+        // Same face-or-initials treatment the roster and fixture tables use. The
+        // agenda is scanned, not read, and a face is recognised faster than a
+        // name -- it was the one player-identifying view rendering without one.
+        const face=p.photo?`<img class="face" src="${esc(p.photo)}" alt="" loading="lazy">`
+          :`<span class="face ini">${esc(initials(p.name))}</span>`;
         const g=signal(p);
         return `<div class="agrow" data-id="${esc(p.tm_id)}">
-          <span class="agp">${esc(p.name)}<small>${esc(p.club||"")}</small></span>
+          <span class="agp">${face}<span class="agnm">${esc(p.name)}<small>${esc(p.club||"")}</small></span></span>
           <span class="agv">${f.ha==="H"?"vs":"at"} ${crest}${esc(f.opp||"—")}</span>
           <span class="agt">${esc(f.time||"")}</span>
           <span class="ags">${g?`<span class="sig ${g[0]}">${g[1]}</span>`:""}</span>
