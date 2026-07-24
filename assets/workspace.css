@@ -243,7 +243,15 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;min-width:940px}
    column — the strip is read by scanning vertically, so a ragged right edge
    costs more than the extra glyph room was worth. 12px fits the star and keeps
    ten blocks inside the same column. */
-.strip i{width:12px;height:19px;border-radius:2px;display:block;flex:none}
+/* min-width and max-width as well as width. `width` alone is a SUGGESTION for a
+   flex item: flex-basis:auto lets a block size to its content, so the blocks
+   carrying a glyph grew wider than the empty ones and the strip came out ragged
+   -- visibly so once checks and stars sat side by side in the same row.
+   flex:none fixes basis to the content, which is the opposite of what is wanted;
+   the three widths together make the box the same 12px whatever is inside it.
+   overflow:hidden so a wide glyph is clipped rather than stretching its box. */
+.strip i{width:12px;min-width:12px;max-width:12px;height:19px;border-radius:2px;
+  display:block;flex:0 0 12px;overflow:hidden;box-sizing:border-box}
 .strip i.P{background:var(--up)} .strip i.B{background:var(--warn)}
 /* "Not in squad" is an absence and should read as one — but --line-2 sat so close
    to the row background that a strip of eight outs looked like empty space where
@@ -259,7 +267,9 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;min-width:940px}
    A dark glyph on the green holds up better than white at this scale — white on
    --up greyed out at a glance and the star stopped being scannable, which was
    its whole purpose. */
-.strip i.hit{font:900 11px/19px var(--sans);text-align:center;letter-spacing:0;
+/* 10px, not 11px. A 900-weight star at 11px overflows a 12px box and was being
+   clipped on both sides, which read as a narrower block. */
+.strip i.hit{font:900 10px/19px var(--sans);text-align:center;letter-spacing:0;
   color:rgba(0,0,0,.62);text-shadow:0 0 1px rgba(255,255,255,.35)}
 /* Played for a different club — a reserve side, or one he has since left. Marked
    by a notch cut from the bottom corner, not by opacity: fading it made the block
@@ -268,9 +278,11 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;min-width:940px}
    stays at full strength, because played/benched/out is still the primary fact
    and a second signal must not weaken the first. The hover names the club. */
 .strip i.prev{clip-path:polygon(0 0,100% 0,100% 62%,58% 100%,0 100%)}
-/* 41 blocks are both starred and for another club. The notch takes the bottom
-   corner, so the centred star has to ride above it or it loses a leg. */
-.strip i.prev.hit{line-height:15px;font-size:10px}
+/* 41 blocks are both marked and for another club. The notch takes the bottom
+   corner, so a centred glyph has to ride above it or it loses a leg. Applies to
+   the check as well as the star -- they are one system and must not diverge on
+   an edge case. */
+.strip i.prev.hit,.strip i.prev.cs{line-height:15px}
 /* On amber and grey the white star has too little contrast to read. */
 /* No per-state overrides: the dark glyph reads on both green and amber, and all
    139 starred blocks are "played" anyway — you cannot score from outside the
@@ -290,7 +302,7 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;min-width:940px}
    22 blocks are BOTH a clean sheet and a goal -- a defender who scored in a 2-0.
    The star wins there, because scoring is the rarer and more individual fact;
    the tooltip still names both. */
-.strip i.cs{font:900 11px/19px var(--sans);text-align:center;letter-spacing:0;
+.strip i.cs{font:900 10px/19px var(--sans);text-align:center;letter-spacing:0;
   color:rgba(0,0,0,.62);text-shadow:0 0 1px rgba(255,255,255,.35)}
 
 /* National teams — every side a player has appeared for, on his own row. The
