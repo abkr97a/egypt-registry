@@ -54,8 +54,13 @@ main{max-width:1060px;margin:0 auto;padding:0 24px 80px}
    enough to stay a backdrop, and it leaves the left half clean for the type. */
 .mosaic{position:absolute;top:0;right:0;bottom:0;width:52%;
   display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:2px}
-.mosaic img{width:100%;height:100%;object-fit:cover;object-position:center 20%;
-  filter:grayscale(1) contrast(1.06);opacity:.42}
+/* object-position 30%, not 20%. TM portraits are head-and-shoulders on a 300x390
+   frame; against a tile roughly twice as tall as it is wide, a 20% anchor cut
+   the chin off and filled the tile with forehead. 30% keeps the whole face.
+   opacity 0.30 rather than 0.42: at 0.42 six faces at this size read as the
+   subject of the hero rather than its backdrop, which is what they had become. */
+.mosaic img{width:100%;height:100%;object-fit:cover;object-position:center 30%;
+  filter:grayscale(1) contrast(1.04);opacity:.30}
 /* Beyond six there is nothing to show them in; kept in the HTML so the set can
    be re-cut without touching markup. */
 .mosaic img:nth-child(n+7){display:none}
@@ -66,7 +71,7 @@ main{max-width:1060px;margin:0 auto;padding:0 24px 80px}
    faces vanish. */
 .hero::before{content:"";position:absolute;inset:0;
   background:
-    linear-gradient(90deg,#0d1015 0%,#0d1015 44%,rgba(13,16,21,.72) 56%,rgba(13,16,21,.30) 100%),
+    linear-gradient(90deg,#0d1015 0%,#0d1015 44%,rgba(13,16,21,.80) 56%,rgba(13,16,21,.46) 100%),
     linear-gradient(180deg,rgba(200,16,46,.30) 0%,rgba(13,16,21,.55) 100%)}
 /* Above both the photographs and the scrim. */
 .herotext{position:relative;z-index:1;padding:0 30px;max-width:47ch}
