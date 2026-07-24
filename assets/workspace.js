@@ -774,28 +774,45 @@ function openPanel(id){
     //
     // 270 minutes is three full matches: enough that one cameo cannot dominate,
     // low enough that a genuine squad keeper still qualifies.
+    // TWO ROWS, each labelled. One set of four numbers could only ever be the
+    // career or the window, and whichever it was the other went missing -- a
+    // keeper's 502 appearances say who he is, his last 14 say whether he is
+    // playing now, and a scout needs both.
+    //
+    // Career carries no goals-against: TM publishes career clean sheets but not
+    // career goals conceded, so a career GA/90 cannot be computed. Rather than
+    // leave a fourth cell empty the career row shows full 90s, which is the
+    // honest thing the minutes total supports.
+    const c90=st.m?Math.round(st.m/90):0;
+    // MINUTES, not matches, decide whether a rate is meaningful. A substitute
+    // who plays one minute of a 0-1 defeat is charged with a goal he was on the
+    // pitch for, and dividing by 1/90th of a match yields 90.00 per 90. Naïm
+    // Abou Bakr cleared a five-MATCH threshold on 17 total minutes and scored
+    // 63.53 -- arithmetically correct and completely meaningless.
+    //
+    // 270 minutes is three full matches: enough that one cameo cannot dominate,
+    // low enough that a genuine squad keeper still qualifies.
     const thin=dr.mins<270;
-    // "last 14", not "played". form[] holds a fixed window -- capped at 14 for
-    // every player -- so a bare "PLAYED 14" beside three other numbers reads as
-    // a career total. Ahmed El Shenawy's card said 14 while his career is 502
-    // appearances and 246 clean sheets: the figure was right, the label made it
-    // a lie. Every card here is the recent window, and each one now says so.
-    dk=kpi(dr.played,"last 14")+kpi(dr.cs,"clean sheets")+kpi(dr.ga,"conceded")
-      +(thin?kpi(Math.round(dr.mins/90)+"","90s"):kpi(dr.per90.toFixed(2),"GA / 90"));
+    dk=`<div class="krow">Career</div>`
+      +`<div class="kpis">${kpi(st.a||0,"apps")}${kpi(st.cs||0,"clean sheets")}`
+      +`${kpi(c90,"full 90s")}${kpi(st.y||0,"yellows")}</div>`
+      +`<div class="krow">Last ${dr.played===1?"match":dr.played+" matches"}</div>`
+      +`<div class="kpis">${kpi(dr.played,"played")}${kpi(dr.cs,"clean sheets")}`
+      +`${kpi(dr.ga,"conceded")}`
+      +`${thin?kpi(Math.round(dr.mins/90)+"","90s"):kpi(dr.per90.toFixed(2),"GA / 90")}</div>`;
     dnote=`<p class="dnote">${thin
-      ? `Only ${dr.mins} minute${dr.mins===1?"":"s"} played across ${dr.played} appearance${
-          dr.played===1?"":"s"} — too little to rate per 90.`
-      : `His last ${dr.played} matches, ${dr.mins} minutes — not his career, which is
-         ${st.a||0} appearance${st.a===1?"":"s"}${st.cs?` and ${st.cs} clean sheets`:""}.
-         Goals his side conceded with him in goal: a team outcome, but the one a keeper is
-         judged on.`}${
+      ? `Only ${dr.mins} minute${dr.mins===1?"":"s"} in the recent window — too little to rate
+         per 90.`
+      : `Goals conceded is his side's, over ${dr.mins} minutes — a team outcome, but the one a
+         keeper is judged on. Career goals conceded is not published, so there is no
+         career rate to compare it against.`}${
       // A scoring goalkeeper is rare enough to be worth a line: 13 of 58 here
       // have a goal or an assist, one of them four goals. Said in the note
       // rather than given a card, because for a keeper it is a curiosity and
       // goals against is the number he is actually judged on.
       (st.g||st.as)?` Also ${[st.g?`${st.g} goal${st.g>1?"s":""}`:"",
-        st.as?`${st.as} assist${st.as>1?"s":""}`:""].filter(Boolean).join(" and ")} in
-        ${st.a||0} career appearances.`:""}</p>`;
+        st.as?`${st.as} assist${st.as>1?"s":""}`:""].filter(Boolean).join(" and ")}
+        in his career.`:""}</p>`;
   }else if(dr){
     // Goals and assists STAY. Removing clean sheets was right; dropping these
     // with them was not, and it cost the card its most individual numbers.
@@ -814,12 +831,18 @@ function openPanel(id){
     // minutes ROUNDS to "4 full 90s from 3 appearances" -- true arithmetic that
     // reads as a contradiction. Rounding down can never claim more than he
     // played.
-    dk=kpi(st.a||0,"career apps")+kpi(st.g||0,"goals")+kpi(st.as||0,"assists")
-      +kpi(Math.floor(dr.mins/90)+" / "+dr.played,"90s, last 14");
-    dnote=`<p class="dnote">The first three are career totals; the last is his recent form —
-      ${dr.mins} minutes across ${dr.played} of his last 14 matches. Clean sheets are not shown
-      for outfielders — they belong to the whole side, and no individual defensive numbers
-      (tackles, duels) are published outside the top leagues.</p>`;
+    const starts=((MSTATS[p.tm_id]||{}).form||[])
+      .filter(f=>f.part==="P"&&(f.min||0)>=60).length;
+    dk=`<div class="krow">Career</div>`
+      +`<div class="kpis">${kpi(st.a||0,"apps")}${kpi(st.g||0,"goals")}`
+      +`${kpi(st.as||0,"assists")}${kpi(st.m?Math.round(st.m/90):0,"full 90s")}</div>`
+      +`<div class="krow">Last ${dr.played===1?"match":dr.played+" matches"}</div>`
+      +`<div class="kpis">${kpi(dr.played,"played")}${kpi(starts,"60+ min")}`
+      +`${kpi(Math.floor(dr.mins/90),"full 90s")}${kpi(dr.mins,"minutes")}</div>`;
+    dnote=`<p class="dnote">Clean sheets are not shown for outfielders — they belong to the
+      whole side, and no individual defensive numbers (tackles, duels) are published outside
+      the top leagues. Minutes and selection are his own, and they answer the question a
+      scout asks about a defender: is his manager picking him.</p>`;
   }
 
   // Season trajectory. Bars, not a line: six seasons is too few for a line to
@@ -856,7 +879,7 @@ function openPanel(id){
         <div class="sub">${esc(p.age||"?")} · ${esc(p.position||"")} · ${esc(p.club||"")}</div></div>
       <button class="pclose" id="pclose" aria-label="Close">×</button></div>
     <div class="pbody">
-      <div class="kpis">${dk||`${kpi(st.a||0,"apps")}${kpi(st.g||0,"goals")}${kpi(st.as||0,"assists")}${kpi(mins+"","90s")}`}</div>
+      ${dk||`<div class="kpis">${kpi(st.a||0,"apps")}${kpi(st.g||0,"goals")}${kpi(st.as||0,"assists")}${kpi(mins+"","90s")}</div>`}
       ${dnote}
       <!-- Notes first. They are what a returning scout opens this panel for; the
            career data is always there and never changes on a visit. -->
@@ -1336,7 +1359,17 @@ function drawScouting(){
   const row=p=>{
     const m=MSTATS[p.tm_id]||{}, s=m.status||{}, g=signal(p);
     const strip=stripHTML(p,10);
-    const ga=(s.g||s.a)?`${s.g?s.g+"G":""}${s.g&&s.a?" ":""}${s.a?s.a+"A":""}`:"—";
+    // A goalkeeper's G/A is 0/0 and always will be, so the column that reads
+    // "G/A" for an attacker reads as an empty cell for him. Same slot, the
+    // number his position is actually judged on: goals conceded per 90 for a
+    // keeper, clean sheets alongside it. Defenders keep G/A -- 147 of 200 have
+    // scored or assisted, and for a full-back that IS the distinguishing number.
+    const dr2=defRecord(p);
+    const ga=isKeeper(p)&&dr2
+      ? (dr2.mins>=270
+          ? `<b>${dr2.per90.toFixed(2)}</b><small class="cn">${dr2.cs} CS · ${dr2.ga} GA</small>`
+          : `<small class="cn">${dr2.played} match${dr2.played===1?"":"es"}</small>`)
+      : (s.g||s.a)?`${s.g?s.g+"G":""}${s.g&&s.a?" ":""}${s.a?s.a+"A":""}`:"—";
     const crest=CRESTS[p.club_id]?`<img class="cc" src="${esc(CRESTS[p.club_id])}" alt="" loading="lazy">`:"";
     return `<tr data-id="${esc(p.tm_id)}">
       ${starCell(p)}
@@ -1351,7 +1384,7 @@ function drawScouting(){
   };
   const cols=`<colgroup><col class="c-save"><col class="c-pl"><col class="c-st"><col class="c-ta"><col class="c-ga"><col class="c-sg"><col class="c-dt"></colgroup>`;
   const head=`<thead><tr><th class="c-save"></th><th>Player</th><th>Last 10 club games</th>
-    <th class="hide-s">Squad status</th><th class="r hide-s">G/A</th>
+    <th class="hide-s">Squad status</th><th class="r hide-s" title="Goals and assists — for a goalkeeper, goals conceded per 90 with clean sheets and goals against beneath">G/A · GK per 90</th>
     <th class="c">Signal</th><th class="r hide-s">Last game</th></tr></thead>`;
   $("body").innerHTML=`<div class="sclegend">
       <span><i class="P"></i>played</span><span><i class="B"></i>benched</span>

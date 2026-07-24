@@ -481,6 +481,12 @@ td.sides>.sidesw{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
 
 .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:6px}
 .kpi{background:var(--raised);border:1px solid var(--line);border-radius:9px;padding:10px 8px;text-align:center}
+/* Which window a row of numbers covers. Small and quiet: it is a label, not a
+   heading, but without it four cards of career totals and four of recent form
+   look like one set of eight. */
+.krow{font:700 9.5px/1 var(--sans);letter-spacing:.14em;text-transform:uppercase;
+  color:var(--mut);margin:14px 2px 7px}
+.krow:first-child{margin-top:0}
 /* What the defensive numbers mean, said once under them. A clean sheet is a
    TEAM outcome for an outfielder, and a card that implies otherwise is claiming
    more than the data supports. */
