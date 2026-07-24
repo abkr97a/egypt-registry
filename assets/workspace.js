@@ -120,6 +120,15 @@ function regionOf(p){
   // that matters about them already lives.
   if(isFree(p))return "free";
   const c=homeCountry(p);
+  // Egypt, first and on its own. It was in no list at all: this file was written
+  // when every player was abroad, so Egypt could not be an answer and 554
+  // domestic players fell through to "Region not mapped" — a label that reads as
+  // missing data about the one country whose data is most complete.
+  //
+  // Kept separate from Africa rather than folded into it. For this audience
+  // "at home" and "on the continent" are different questions, and a filter that
+  // answered them together would be useless for both.
+  if(c==="Egypt")return "egy";
   if(GULF.has(c))return "gulf";
   if(EU.has(c))return "eu";
   if(AFR.has(c))return "afr";
@@ -505,9 +514,11 @@ function drawFilters(){
    // "other" stays in the list but only appears when it has members — a country
    // the crawl reaches that no region names is a bug worth seeing, not a
    // permanent empty row.
-   +facet("Region","region",[["eu","Europe"],["gulf","Gulf & Middle East"],["afr","Africa"],
-                             ["amer","Americas"],["asia","Asia & Oceania"],["free","No club"],
-                             ["other","Region not mapped"]])
+   // Egypt first: it is the largest group and the one a reader starting here
+   // most often wants, and it reads oddly below the continents it belongs to.
+   +facet("Region","region",[["egy","Egypt"],["eu","Europe"],["gulf","Gulf & Middle East"],
+                             ["afr","Africa (rest)"],["amer","Americas"],["asia","Asia & Oceania"],
+                             ["free","No club"],["other","Region not mapped"]])
    +facet("Club status","club",[["signed","At a club"],["free","Free agent"]])
    +facet("International","caps",[["senior","Senior caps"],["youth","Youth only"],["none","Never capped"]])
    +facet("Position","pos",POS)
