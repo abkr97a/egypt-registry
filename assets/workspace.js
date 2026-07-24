@@ -258,11 +258,55 @@ function blockTitle(p,x){
   if(x.g)ret.push(`${x.g} goal${x.g>1?"s":""}`);
   if(x.a)ret.push(`${x.a} assist${x.a>1?"s":""}`);
   if(ret.length)bits.push(ret.join(", "));
+  // Goals against, for the players judged on them. Only on a match he played:
+  // the score of a game watched from the bench says nothing about him.
+  if(isDefensive(p)&&f&&x.s==="P"&&(x.min||0)>0){
+    const c=conceded(f);
+    if(c===0)bits.push("clean sheet");
+    else if(c!==null)bits.push(`${c} conceded`);
+  }
   return bits.filter(Boolean).join(" · ");
 }
 // A goal or an assist gets a star. A green block that was a goal is not the same
 // as a green block that was a quiet 90 minutes, and scanning for the difference
 // is the entire reason a scout reads this strip.
+/* ---------- defensive record ----------
+   A goalkeeper's card led with "0 goals, 0 assists", which is true and useless.
+   What a scout asks about a keeper or a defender is how many goals went in
+   behind him and how often none did.
+
+   Nothing new is scraped: every form row already carries the score and the
+   result. `sc` is written OWN TEAM FIRST -- verified against the stated W/L/D on
+   all 9,360 rows in the file: own-first agrees 9,360 times and disagrees zero,
+   while treating it as home-away agrees only 64% of the time. Flipping by venue
+   would therefore have inverted goals conceded on every away match, and the
+   result would have looked entirely plausible.
+
+   PLAYED MATCHES ONLY. The first keeper I checked showed 6, 3, 2, 1, 0 and 2
+   conceded across his last six rows -- every one of them from the bench. Goals
+   conceded while a player was not on the pitch are not his, and counting them
+   would slander the deputy for the starter's bad afternoon. */
+const DEF_POS=/goalkeeper|back|defender/i;
+const isKeeper=p=>/goalkeeper/i.test(p.position||"");
+const isDefensive=p=>DEF_POS.test(p.position||"");
+// Goals against, from the player's own perspective.
+function conceded(f){
+  const sc=String(f&&f.sc||"").trim();
+  if(!sc.includes("-"))return null;
+  const n=parseInt(sc.split("-")[1],10);
+  return isNaN(n)?null:n;
+}
+function defRecord(p){
+  if(!isDefensive(p))return null;
+  const rows=((MSTATS[p.tm_id]||{}).form||[])
+    .filter(f=>f.part==="P"&&(f.min||0)>0&&conceded(f)!==null);
+  if(!rows.length)return null;
+  const mins=rows.reduce((s,f)=>s+(f.min||0),0);
+  const ga=rows.reduce((s,f)=>s+conceded(f),0);
+  return {played:rows.length, cs:rows.filter(f=>conceded(f)===0).length,
+          ga, mins, per90:mins?ga*90/mins:0};
+}
+
 function stripHTML(p,n){
   const sq=((MSTATS[p.tm_id]||{}).squad||[]).slice(0,n).slice().reverse();
   // Width follows the block count, so a 6-block strip on Fixtures and a 10-block
@@ -702,6 +746,29 @@ function openPanel(id){
   const kpi=(v,l)=>`<div class="kpi"><b>${esc(v)}</b><span>${esc(l)}</span></div>`;
   const mins=st.m?Math.round(st.m/90):0;
 
+  // Keepers and defenders lead with what they are judged on. "0 goals, 0
+  // assists" is true of almost every goalkeeper and tells a scout nothing.
+  const dr=defRecord(p);
+  let dk="", dnote="";
+  if(dr){
+    // MINUTES, not matches, decide whether a rate is meaningful. A substitute
+    // who plays one minute of a 0-1 defeat is charged with a goal he was on the
+    // pitch for, and dividing by 1/90th of a match yields 90.00 per 90. Naïm
+    // Abou Bakr cleared a five-MATCH threshold on 17 total minutes and scored
+    // 63.53 -- arithmetically correct and completely meaningless.
+    //
+    // 270 minutes is three full matches: enough that one cameo cannot dominate,
+    // low enough that a genuine squad keeper still qualifies.
+    const thin=dr.mins<270;
+    dk=kpi(dr.played,"played")+kpi(dr.cs,"clean sheets")+kpi(dr.ga,"conceded")
+      +(thin?kpi(Math.round(dr.mins/90)+"","90s"):kpi(dr.per90.toFixed(2),"GA / 90"));
+    dnote=`<p class="dnote">${thin
+      ? `Only ${dr.mins} minute${dr.mins===1?"":"s"} played across ${dr.played} appearance${
+          dr.played===1?"":"s"} — too little to rate per 90.`
+      : `Across ${dr.played} appearances, ${dr.mins} minutes. Team goals conceded while he was on
+         the pitch${isKeeper(p)?"":", not an individual statistic"}.`}</p>`;
+  }
+
   // Season trajectory. Bars, not a line: six seasons is too few for a line to
   // read as anything, and the comparison is between years, not a continuum.
   let traj="";
@@ -712,12 +779,23 @@ function openPanel(id){
       <div class="sparkx">${t.map(x=>`<span>${esc(String(x.s).slice(-2))}</span>`).join("")}</div>`;
   }
 
-  const form=(m.form||[]).slice(0,6).map(f=>`<tr>
+  // For a keeper or defender the match list gains a goals-against column, and a
+  // clean sheet is marked. Only on matches he PLAYED: a 0 beside a game he
+  // watched from the bench would read as his clean sheet.
+  const showGA=!!dr;
+  const form=(m.form||[]).slice(0,6).map(f=>{
+    const c=conceded(f), played=f.part==="P"&&(f.min||0)>0;
+    const ga=!showGA?"":`<td class="r ga">${played&&c!==null
+      ? (c===0?`<span class="cs" title="Clean sheet">0</span>`:c)
+      : `<span class="d">—</span>`}</td>`;
+    return `<tr>
       <td class="d">${esc((f.fd||"").slice(5))}</td>
       <td class="o">${esc(f.opp||f.cn||"—")}<small>${esc(f.cn||"")}</small></td>
       <td class="r"><span class="res ${esc(f.r||"D")}">${esc(f.sc||"")}</span></td>
+      ${ga}
       <td class="r">${f.part==="P"?(f.min?f.min+"'":"played"):f.part==="B"?"<span class='d'>bench</span>":"<span class='d'>out</span>"}</td>
-    </tr>`).join("");
+    </tr>`;
+  }).join("");
 
   const nx=NEXTM[id];
   $("panel").innerHTML=`
@@ -726,7 +804,8 @@ function openPanel(id){
         <div class="sub">${esc(p.age||"?")} · ${esc(p.position||"")} · ${esc(p.club||"")}</div></div>
       <button class="pclose" id="pclose" aria-label="Close">×</button></div>
     <div class="pbody">
-      <div class="kpis">${kpi(st.a||0,"apps")}${kpi(st.g||0,"goals")}${kpi(st.as||0,"assists")}${kpi(mins+"","90s")}</div>
+      <div class="kpis">${dk||`${kpi(st.a||0,"apps")}${kpi(st.g||0,"goals")}${kpi(st.as||0,"assists")}${kpi(mins+"","90s")}`}</div>
+      ${dnote}
       <!-- Notes first. They are what a returning scout opens this panel for; the
            career data is always there and never changes on a visit. -->
       <div id="notes"></div>

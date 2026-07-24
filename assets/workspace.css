@@ -481,6 +481,15 @@ td.sides>.sidesw{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
 
 .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:6px}
 .kpi{background:var(--raised);border:1px solid var(--line);border-radius:9px;padding:10px 8px;text-align:center}
+/* What the defensive numbers mean, said once under them. A clean sheet is a
+   TEAM outcome for an outfielder, and a card that implies otherwise is claiming
+   more than the data supports. */
+.dnote{margin:8px 2px 0;font-size:11.5px;line-height:1.5;color:var(--mut)}
+/* A clean sheet is the one zero worth seeing in a column of goals against. */
+.ga{font-variant-numeric:tabular-nums}
+.cs{display:inline-grid;place-items:center;min-width:19px;height:19px;padding:0 5px;
+  border-radius:5px;background:rgba(46,163,106,.16);color:var(--up);
+  font:800 11px/1 var(--sans)}
 .kpi b{display:block;font:800 17px/1 var(--sans);font-variant-numeric:tabular-nums}
 .kpi span{display:block;font:600 8.5px/1 var(--sans);letter-spacing:.12em;
   text-transform:uppercase;color:var(--mut);margin-top:5px}
