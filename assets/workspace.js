@@ -775,13 +775,20 @@ function openPanel(id){
     // 270 minutes is three full matches: enough that one cameo cannot dominate,
     // low enough that a genuine squad keeper still qualifies.
     const thin=dr.mins<270;
-    dk=kpi(dr.played,"played")+kpi(dr.cs,"clean sheets")+kpi(dr.ga,"conceded")
+    // "last 14", not "played". form[] holds a fixed window -- capped at 14 for
+    // every player -- so a bare "PLAYED 14" beside three other numbers reads as
+    // a career total. Ahmed El Shenawy's card said 14 while his career is 502
+    // appearances and 246 clean sheets: the figure was right, the label made it
+    // a lie. Every card here is the recent window, and each one now says so.
+    dk=kpi(dr.played,"last 14")+kpi(dr.cs,"clean sheets")+kpi(dr.ga,"conceded")
       +(thin?kpi(Math.round(dr.mins/90)+"","90s"):kpi(dr.per90.toFixed(2),"GA / 90"));
     dnote=`<p class="dnote">${thin
       ? `Only ${dr.mins} minute${dr.mins===1?"":"s"} played across ${dr.played} appearance${
           dr.played===1?"":"s"} — too little to rate per 90.`
-      : `Across ${dr.played} appearances, ${dr.mins} minutes. Goals his side conceded with him
-         in goal — a team outcome, but the one a keeper is judged on.`}${
+      : `His last ${dr.played} matches, ${dr.mins} minutes — not his career, which is
+         ${st.a||0} appearance${st.a===1?"":"s"}${st.cs?` and ${st.cs} clean sheets`:""}.
+         Goals his side conceded with him in goal: a team outcome, but the one a keeper is
+         judged on.`}${
       // A scoring goalkeeper is rare enough to be worth a line: 13 of 58 here
       // have a goal or an assist, one of them four goals. Said in the note
       // rather than given a card, because for a keeper it is a curiosity and
@@ -807,12 +814,12 @@ function openPanel(id){
     // minutes ROUNDS to "4 full 90s from 3 appearances" -- true arithmetic that
     // reads as a contradiction. Rounding down can never claim more than he
     // played.
-    dk=kpi(st.a||0,"apps")+kpi(st.g||0,"goals")+kpi(st.as||0,"assists")
-      +kpi(Math.floor(dr.mins/90)+" / "+dr.played,"recent 90s");
-    dnote=`<p class="dnote">Career totals. Recently: ${dr.mins} minutes across ${dr.played}
-      appearance${dr.played===1?"":"s"}. Clean sheets are not shown for outfielders — they
-      belong to the whole side, and no individual defensive numbers (tackles, duels) are
-      published outside the top leagues.</p>`;
+    dk=kpi(st.a||0,"career apps")+kpi(st.g||0,"goals")+kpi(st.as||0,"assists")
+      +kpi(Math.floor(dr.mins/90)+" / "+dr.played,"90s, last 14");
+    dnote=`<p class="dnote">The first three are career totals; the last is his recent form —
+      ${dr.mins} minutes across ${dr.played} of his last 14 matches. Clean sheets are not shown
+      for outfielders — they belong to the whole side, and no individual defensive numbers
+      (tackles, duels) are published outside the top leagues.</p>`;
   }
 
   // Season trajectory. Bars, not a line: six seasons is too few for a line to
