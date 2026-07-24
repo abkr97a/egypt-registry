@@ -260,10 +260,13 @@ function blockTitle(p,x){
   if(ret.length)bits.push(ret.join(", "));
   // Keepers only. On an outfielder's tooltip "clean sheet" reads as his own,
   // and it is his whole team's.
-  if(isKeeper(p)&&f&&x.s==="P"&&(x.min||0)>0){
+  // Keepers get both numbers; a defender gets only the clean sheet. "2 conceded"
+  // on a full-back's tooltip reads as his responsibility, and it is his whole
+  // side's -- the same reason the cards do not show him goals against.
+  if(isDefensive(p)&&f&&x.s==="P"&&(x.min||0)>0){
     const c=conceded(f);
     if(c===0)bits.push("clean sheet");
-    else if(c!==null)bits.push(`${c} conceded`);
+    else if(c!==null&&isKeeper(p))bits.push(`${c} conceded`);
   }
   return bits.filter(Boolean).join(" · ");
 }
@@ -322,7 +325,16 @@ function stripHTML(p,n){
     // was somewhere else is the wrong conclusion. Marked, not hidden.
     const f=matchOf(p,x);
     const elsewhere=f&&f.side&&f.side!==p.club;
-    return `<i class="${x.s}${hit?" hit":""}${elsewhere?" prev":""}" title="${esc(blockTitle(p,x))}">${hit?"★":""}</i>`;
+    // A clean sheet, for the players judged on them. A RING, not the star: the
+    // star already means "scored or assisted", and Ahmed El Shenawy has two
+    // career assists, so one symbol for both would be ambiguous on exactly the
+    // players this is for. A goal is something he did; a clean sheet is a match
+    // that stayed goalless, so an outline round the block rather than a mark
+    // inside it is the truer shape.
+    //
+    // Played matches only: a 0-0 watched from the bench is not his clean sheet.
+    const cs=isDefensive(p)&&x.s==="P"&&(x.min||0)>0&&f&&conceded(f)===0;
+    return `<i class="${x.s}${hit?" hit":""}${cs?" cs":""}${elsewhere?" prev":""}" title="${esc(blockTitle(p,x))}">${hit?"★":""}</i>`;
   }).join("")}</span>`;
 }
 
@@ -1390,6 +1402,7 @@ function drawScouting(){
       <span><i class="P"></i>played</span><span><i class="B"></i>benched</span>
       <span><i class="O"></i>not in squad</span>
       <span><i class="P hit">★</i>scored or assisted</span>
+      <span><i class="P cs"></i>clean sheet (GK &amp; defenders)</span>
       <span><i class="P prev"></i>another club</span>
       <span>oldest → newest · hover a block for the match, score and minutes</span></div>`
     +SCGRP.map(([k,label])=>{
