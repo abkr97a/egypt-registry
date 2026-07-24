@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Workspace — Egyptian Players</title>
+<meta name="description" content="Every footballer eligible for Egypt playing outside the country — dual and single nationality — with squad status, form and market value. Built from public football data across 38 countries.">
+<meta name="author" content="AbdelRahman Mohammed">
+<meta name="robots" content="index, follow">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Egyptians Abroad — Scouting Workspace">
+<meta property="og:description" content="Every Egypt-eligible footballer playing abroad, with live form and squad status.">
+<meta property="og:url" content="https://abkr97a.github.io/egypt-registry/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9A%BD%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/workspace.css">
+</head>
+<body>
+
+<div class="app">
+  <aside class="side" id="side">
+    <div class="brand">
+      <a class="brandlink" href="./"><b>Egyptian Players</b>
+      <span>Scouting Workspace</span></a>
+    </div>
+    <div class="filters" id="filters"></div>
+  </aside>
+
+  <div class="main">
+    <header class="top">
+      <button class="tgl menu" id="menu" aria-label="Filters">☰</button>
+      <!-- Views, not filters. In the sidebar they sat above the facets and read
+           as another facet group; a view changes the question the page answers,
+           a facet narrows the answer. -->
+      <nav class="nav" id="nav"></nav>
+      <!-- Saved-only, applied across every view: star players on the roster, then
+           ask "who is playing" or "who is cap-tied" about that shortlist. Drawn
+           by JS so it can hide itself when nothing is saved. -->
+      <button class="savedtgl" id="savedtgl" hidden></button>
+      <div class="count" id="count">—</div>
+      <div class="search">
+        <input id="q" type="search" placeholder="Search player, club, country…" aria-label="Search">
+      </div>
+      <!-- Signed-out: "Sign in". Signed-in: the account menu. Drawn by JS so a
+           visitor with no network still gets a working page. -->
+      <button class="tgl" id="account">Sign in</button>
+      <button class="tgl" id="theme" aria-label="Toggle theme">◐</button>
+    </header>
+    <div class="body" id="body"></div>
+  </div>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="panel" id="panel" aria-label="Player detail"></aside>
+
+<!-- Sign-in dialog. Empty until opened; nothing renders for a signed-out
+     visitor who never clicks it. -->
+<div class="scrim" id="authscrim"></div>
+<div class="authbox" id="authbox" role="dialog" aria-label="Sign in" hidden></div>
+
+<script src="assets/supabase-config.js"></script>
+<script src="assets/auth.js"></script>
+<script src="assets/workspace.js"></script>
+</body>
+</html>

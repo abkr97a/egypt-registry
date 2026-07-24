@@ -13,11 +13,15 @@ const num=v=>{const n=parseInt(v,10);return isNaN(n)?0:n;};
 // questions, and carrying one sort across both meant opening Fixtures showed them
 // alphabetically when the only useful order is who plays soonest.
 const S={view:"roster",q:"",sort:"name",dir:1,fxsort:"date",fxdir:1,sel:null,onlySaved:false,
-         f:{track:new Set(),region:new Set(),club:new Set(),caps:new Set(),pos:new Set(),age:new Set(),form:new Set()}};
+         f:{based:new Set(),track:new Set(),region:new Set(),club:new Set(),caps:new Set(),pos:new Set(),age:new Set(),form:new Set()}};
 // A player between clubs is available now and needs no fee — the single most
 // actionable state in the dossier, and previously only findable by searching the
 // words "free agent".
 const isFree=p=>/free agent|without club/i.test(p.club||"");
+// Where he plays, home or abroad — the platform's top-level split. registry.py
+// writes `based`; older builds do not carry it, so fall back to plays_in rather
+// than reporting every player as abroad.
+const basedOf=p=>p.based||((p.plays_in==="Egypt")?"egypt":"abroad");
 const capBand=p=>{const c=caps(p);return c.senior?"senior":c.youth?"youth":"none";};
 
 /* ---------- shortlist ----------
@@ -266,6 +270,7 @@ function hits(p){
 function passes(p,skip){
   if(!hits(p))return false;
   const f=S.f;
+  if(skip!=="based"&&f.based.size&&!f.based.has(basedOf(p)))return false;
   if(skip!=="track"&&f.track.size&&!f.track.has(p.track))return false;
   if(skip!=="region"&&f.region.size&&!f.region.has(regionOf(p)))return false;
   if(skip!=="club"&&f.club.size&&!f.club.has(isFree(p)?"free":"signed"))return false;
@@ -446,6 +451,7 @@ function facet(title,group,opts){
   let shown=0;
   const body=opts.map(([val,label])=>{
     const n=DATA.filter(p=>passes(p,group)&&({
+      based:x=>basedOf(x)===val,
       track:x=>x.track===val, region:x=>regionOf(x)===val,
       club:x=>(isFree(x)?"free":"signed")===val, caps:x=>capBand(x)===val,
       pos:x=>posOf(x)===val, age:x=>ageBand(x)===val, form:x=>formBand(x)===val,
@@ -463,7 +469,10 @@ function facet(title,group,opts){
 }
 function drawFilters(){
   $("filters").innerHTML=
-    facet("Track","track",[["dual","Dual nationality"],["single","Egyptian only"]])
+    // First: it is the biggest cut in the data, 199 abroad against 552 at home,
+    // and the question a scout answers before any other.
+    facet("Based","based",[["abroad","Abroad"],["egypt","In Egypt"]])
+   +facet("Track","track",[["dual","Dual nationality"],["single","Egyptian only"]])
    // "other" stays in the list but only appears when it has members — a country
    // the crawl reaches that no region names is a bug worth seeing, not a
    // permanent empty row.
@@ -1150,7 +1159,14 @@ async function boot(){
   // A shared list arrives as ?list=id,id. MERGED, not replaced: opening a
   // colleague's link must not wipe your own saves, and a replace is
   // unrecoverable — there is no server copy to restore from.
-  const shared=new URLSearchParams(location.search).get("list");
+  const qs=new URLSearchParams(location.search);
+  // ?based=abroad|egypt — the landing page's two entry points. Applied as the
+  // facet, not as a separate mode, so the sidebar shows what is filtering and
+  // the reader can widen it without going back.
+  const basedArg=qs.get("based");
+  if(basedArg==="abroad"||basedArg==="egypt")S.f.based.add(basedArg);
+
+  const shared=qs.get("list");
   if(shared){
     const known=new Set(DATA.map(p=>p.tm_id));
     let added=0;

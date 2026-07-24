@@ -3,62 +3,98 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Egyptians Abroad — Scouting Workspace</title>
-<meta name="description" content="Every footballer eligible for Egypt playing outside the country — dual and single nationality — with squad status, form and market value. Built from public football data across 38 countries.">
+<title>Egyptian Players — Scouting Platform</title>
+<meta name="description" content="Every Egyptian footballer we can find — abroad and in the Egyptian league. Squad status, form, market value and eligibility, from public football data across 78 countries.">
 <meta name="author" content="AbdelRahman Mohammed">
 <meta name="robots" content="index, follow">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Egyptians Abroad — Scouting Workspace">
-<meta property="og:description" content="Every Egypt-eligible footballer playing abroad, with live form and squad status.">
+<meta property="og:title" content="Egyptian Players — Scouting Platform">
+<meta property="og:description" content="Every Egyptian footballer we can find, home and abroad. Track players, keep private notes.">
 <meta property="og:url" content="https://abkr97a.github.io/egypt-registry/">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9A%BD%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/workspace.css">
+<link rel="stylesheet" href="assets/home.css">
 </head>
-<body>
+<body class="home">
 
-<div class="app">
-  <aside class="side" id="side">
-    <div class="brand">
-      <b>Egyptians Abroad</b>
-      <span>Scouting Registry</span>
+<header class="hnav">
+  <div class="hbrand"><b>Egyptian Players</b><span>Scouting Platform</span></div>
+  <nav>
+    <a class="hlink" href="app.html">Open the workspace</a>
+    <button class="hbtn" id="account">Sign in</button>
+  </nav>
+</header>
+
+<main>
+  <section class="hero">
+    <p class="eyebrow">Egyptian National Team · Scouting</p>
+    <h1>Every Egyptian footballer<br>we can find.</h1>
+    <p class="lede">Abroad and at home — squad status, recent form, market value and
+      eligibility under FIFA Article&nbsp;9. Built by reading public football data,
+      club by club, across 78 countries.</p>
+    <div class="cta">
+      <a class="primary" href="app.html">Open the workspace</a>
+      <button class="secondary" id="herojoin">Create your account</button>
     </div>
-    <div class="filters" id="filters"></div>
-  </aside>
+  </section>
 
-  <div class="main">
-    <header class="top">
-      <button class="tgl menu" id="menu" aria-label="Filters">☰</button>
-      <!-- Views, not filters. In the sidebar they sat above the facets and read
-           as another facet group; a view changes the question the page answers,
-           a facet narrows the answer. -->
-      <nav class="nav" id="nav"></nav>
-      <!-- Saved-only, applied across every view: star players on the roster, then
-           ask "who is playing" or "who is cap-tied" about that shortlist. Drawn
-           by JS so it can hide itself when nothing is saved. -->
-      <button class="savedtgl" id="savedtgl" hidden></button>
-      <div class="count" id="count">—</div>
-      <div class="search">
-        <input id="q" type="search" placeholder="Search player, club, country…" aria-label="Search">
-      </div>
-      <!-- Signed-out: "Sign in". Signed-in: the account menu. Drawn by JS so a
-           visitor with no network still gets a working page. -->
-      <button class="tgl" id="account">Sign in</button>
-      <button class="tgl" id="theme" aria-label="Toggle theme">◐</button>
-    </header>
-    <div class="body" id="body"></div>
-  </div>
-</div>
+  <!-- Live from the same data the workspace loads, so this page can never quote a
+       number the site does not actually contain. -->
+  <section class="stats" id="stats" aria-label="What is in the database">
+    <div class="stat"><b id="n-total">—</b><span>players</span></div>
+    <div class="stat"><b id="n-abroad">—</b><span>abroad</span></div>
+    <div class="stat"><b id="n-egypt">—</b><span>in the Egyptian league</span></div>
+    <div class="stat"><b id="n-dual">—</b><span>dual nationality</span></div>
+  </section>
 
-<div class="scrim" id="scrim"></div>
-<aside class="panel" id="panel" aria-label="Player detail"></aside>
+  <section class="two">
+    <article class="pop">
+      <h2>Abroad</h2>
+      <p class="popn"><b id="c-abroad">—</b> players</p>
+      <p>The diaspora. Players carrying an Egyptian passport at clubs from the
+        Bundesliga to the Danish fourth tier — including dual nationals whose
+        primary flag is European, and who are therefore invisible to a search by
+        nationality.</p>
+      <p class="popwhy">This is where eligibility questions live: who can still
+        choose Egypt, and who has already been cap-tied elsewhere.</p>
+      <a class="poplink" href="app.html?based=abroad">Browse players abroad</a>
+    </article>
 
-<!-- Sign-in dialog. Empty until opened; nothing renders for a signed-out
-     visitor who never clicks it. -->
+    <article class="pop">
+      <h2>In Egypt</h2>
+      <p class="popn"><b id="c-egypt">—</b> players</p>
+      <p>The Egyptian Premier League, read squad by squad — all twenty clubs.
+        Domestic players with the same match data, form and value history as
+        everyone else in the database.</p>
+      <p class="popwhy">Almost all are single-nationality, so eligibility is not
+        the question here. Form, minutes and trajectory are.</p>
+      <a class="poplink" href="app.html?based=egypt">Browse players in Egypt</a>
+    </article>
+  </section>
+
+  <section class="feats">
+    <div class="feat"><h3>Track players</h3>
+      <p>Star anyone. Your shortlist follows your account to any device, and every
+        view — form, fixtures, caps — narrows to it.</p></div>
+    <div class="feat"><h3>Private notes</h3>
+      <p>Write what you saw. Notes are yours alone: the database enforces it, not
+        the page.</p></div>
+    <div class="feat"><h3>Checked, not assumed</h3>
+      <p>Eighteen consistency checks run on every build. A senior cap for another
+        country is counted from match records, never from a label.</p></div>
+  </section>
+
+  <footer class="hfoot">
+    <span>Built from public data. Player information from Transfermarkt.</span>
+    <a href="app.html">Open the workspace →</a>
+  </footer>
+</main>
+
 <div class="scrim" id="authscrim"></div>
 <div class="authbox" id="authbox" role="dialog" aria-label="Sign in" hidden></div>
 
 <script src="assets/supabase-config.js"></script>
 <script src="assets/auth.js"></script>
-<script src="assets/workspace.js"></script>
+<script src="assets/home.js"></script>
 </body>
 </html>
