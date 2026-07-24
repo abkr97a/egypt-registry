@@ -566,6 +566,82 @@ function natBlock(p){
   return `<div class="psec">National team · ${g.length} call-ups</div>
     <div class="verdict">${verdict}</div>${blocks}`;
 }
+/* ---------- notes ----------
+   Private to their author, enforced by the database rather than by this file: the
+   RLS policy on public.note is `auth.uid() = user_id`, so a bug here cannot show
+   one scout another's judgement.
+
+   Notes are the only data in this project that cannot be re-derived from a crawl.
+   Everything else can be rebuilt by running the pipeline again; a note cannot. It
+   is therefore the one thing worth being careful with -- hence the confirm on
+   delete, and the "saving…" state rather than an optimistic insert that might
+   silently not have happened. */
+const noteDate=s=>{
+  const d=new Date(s);
+  return isNaN(d)?"" :d.toLocaleDateString(undefined,{day:"numeric",month:"short",year:"numeric"});
+};
+
+async function drawNotes(id){
+  const box=$("notes");
+  if(!box)return;
+
+  if(!Auth.user){
+    box.innerHTML=`<div class="psec">Notes</div>
+      <div class="notesignin">Sign in to keep private notes on this player.
+        <button id="notesignin">Sign in</button></div>`;
+    $("notesignin").onclick=()=>authOpen("signin");
+    return;
+  }
+
+  box.innerHTML=`<div class="psec">Notes</div><div class="noteload">Loading…</div>`;
+  let list=[];
+  try{
+    list=await Auth.notes(id);
+  }catch(_){
+    // Offline or the database is asleep. Say so rather than showing an empty
+    // notes section, which reads as "you have written nothing".
+    box.innerHTML=`<div class="psec">Notes</div>
+      <div class="noteerr">Could not reach the server. Your notes are safe — try again in a moment.</div>`;
+    return;
+  }
+
+  box.innerHTML=`<div class="psec">Notes${list.length?` <span class="n">${list.length}</span>`:""}</div>
+    <form class="noteform" id="noteform">
+      <textarea id="notebody" rows="2" placeholder="What did you see?" maxlength="2000"></textarea>
+      <button type="submit" id="notego">Add note</button>
+    </form>
+    <div id="notelist">${list.map(n=>`
+      <div class="note" data-note="${n.id}">
+        <div class="notemeta">${esc(noteDate(n.created_at))}${
+          n.updated_at&&n.updated_at!==n.created_at?" · edited":""}
+          <button class="notedel" data-del="${n.id}" title="Delete this note">×</button></div>
+        <div class="notebody">${esc(n.body)}</div>
+      </div>`).join("")||`<div class="noteempty">No notes yet.</div>`}</div>`;
+
+  $("noteform").onsubmit=async e=>{
+    e.preventDefault();
+    const ta=$("notebody"), go=$("notego");
+    const body=ta.value.trim();
+    if(!body)return;
+    go.disabled=true; go.textContent="Saving…";
+    try{
+      await Auth.addNote(id,body);
+      ta.value="";
+      await drawNotes(id);
+    }catch(ex){
+      go.disabled=false; go.textContent="Add note";
+      // The text stays in the box. Losing what someone just wrote because a
+      // request failed is the one outcome this must never produce.
+      alert("Could not save: "+(ex.message||"unknown error")+"\nYour text is still in the box.");
+    }
+  };
+  box.querySelectorAll("[data-del]").forEach(b=>b.onclick=async()=>{
+    if(!confirm("Delete this note?"))return;
+    try{ await Auth.deleteNote(b.dataset.del); await drawNotes(id); }
+    catch(ex){ alert("Could not delete: "+(ex.message||"unknown error")); }
+  });
+}
+
 function openPanel(id){
   const p=DATA.find(x=>x.tm_id===id); if(!p)return;
   S.sel=id;
@@ -602,6 +678,9 @@ function openPanel(id){
       <button class="pclose" id="pclose" aria-label="Close">×</button></div>
     <div class="pbody">
       <div class="kpis">${kpi(st.a||0,"apps")}${kpi(st.g||0,"goals")}${kpi(st.as||0,"assists")}${kpi(mins+"","90s")}</div>
+      <!-- Notes first. They are what a returning scout opens this panel for; the
+           career data is always there and never changes on a visit. -->
+      <div id="notes"></div>
       <div class="psec">Profile</div>
       <div class="prow"><span>Citizenship</span><b>${esc(p.citizenship||"—")}</b></div>
       <div class="prow"><span>Born</span><b>${esc(p.birthplace||"—")}</b></div>
@@ -618,6 +697,7 @@ function openPanel(id){
   $("panel").classList.add("open");
   $("scrim").classList.add("on");
   $("pclose").onclick=closePanel;
+  drawNotes(id);
   // drawBody, not drawTable: opening a player from the Fixtures or National view
   // must redraw the view you are in, not silently swap it for the roster.
   drawBody();
