@@ -914,9 +914,19 @@ function agendaHTML(list){
         const venue=f.ha==="H"?`<span class="ven h">HOME</span>`
           :f.ha==="A"?`<span class="ven a">AWAY</span>`:"";
         const t=koTime(f);
+        // The player's OWN club badge, beside his club name. Both sides of the
+        // fixture now carry a crest; previously only the opponent did, which
+        // made the row read as being about the opponent.
+        const own=CRESTS[f.sid]||CRESTS[p.club_id];
+        const oc=own?`<img class="cc" src="${esc(own)}" alt="" loading="lazy">`:"";
+        // Competition, then country. `comp` is the division the FIXTURE belongs
+        // to, scraped from the schedule page -- not the player's `league`, which
+        // says "Academy / youth" for 26 of these and nothing at all for 13.
+        const where=[f.comp||"",p.plays_in||""].filter(Boolean);
         return `<div class="agrow" data-id="${esc(p.tm_id)}">
-          <span class="agp">${face}<span class="agnm">${esc(p.name)}<small>${esc(p.club||"")}</small></span></span>
+          <span class="agp">${face}<span class="agnm">${esc(p.name)}<small>${oc}${esc(p.club||"")}</small></span></span>
           <span class="agv">${f.ha==="H"?"vs":f.ha==="A"?"at":""} ${crest}${esc(f.opp||"—")}</span>
+          <span class="agc">${where.length?`${esc(where[0])}${where[1]?`<small>${esc(where[1])}</small>`:""}`:""}</span>
           <span class="agt"${f.utc?"":' title="time as published, zone unconfirmed"'}>${t}${f.utc?"":"*"}</span>
           <span class="ags">${venue}</span>
         </div>`;
@@ -972,7 +982,8 @@ function drawFixtures(){
         :`<span class="face ini">${esc(initials(p.name))}</span>`}<span class="nm"><b>${esc(p.name)}</b>
         <span>${ownc}${esc(p.club||"")}${p.plays_in?` · ${esc(p.plays_in)}`:""}</span></span></span></td>
       <td class="hide-s"><b>${esc(f.date||"—")}</b><small class="cn">${koTime(f)}</small></td>
-      <td>${f.ha==="H"?'<span class="tag">Home</span>':f.ha==="A"?'<span class="tag">Away</span>':""} ${crest}${esc(f.opp||"—")}</td>
+      <td>${f.ha==="H"?'<span class="tag">Home</span>':f.ha==="A"?'<span class="tag">Away</span>':""} ${crest}${esc(f.opp||"—")}
+        ${f.comp?`<small class="cn">${esc(f.comp)}</small>`:""}</td>
       <td class="hide-s">${strip}</td>
       <td class="hide-s">${g?`<span class="sig ${g[0]}">${g[1]}</span>`:`<span class="nostrip">—</span>`}</td></tr>`;
   }).join("");

@@ -494,8 +494,8 @@ td.sides>.sidesw{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
 .agdate em{margin-left:auto;font-style:normal;font:700 11px/1 var(--mono);color:var(--mut);
   background:var(--raised);padding:5px 8px;border-radius:5px;font-variant-numeric:tabular-nums}
 
-.agrow{display:grid;grid-template-columns:1fr 1fr 66px 108px;gap:12px;align-items:center;
-  padding:9px 12px;border-bottom:1px solid var(--line);cursor:pointer}
+.agrow{display:grid;grid-template-columns:1.15fr 1.15fr .95fr 62px 74px;gap:12px;
+  align-items:center;padding:9px 12px;border-bottom:1px solid var(--line);cursor:pointer}
 .agrow:hover{background:rgba(210,30,60,.07)}
 .agp{display:flex;align-items:center;gap:9px;min-width:0}
 /* The name block must be allowed to shrink: without min-width:0 a flex child
@@ -507,6 +507,13 @@ td.sides>.sidesw{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
   overflow:hidden;text-overflow:ellipsis}
 .agp .face{flex:0 0 auto}
 .agv{font-size:13px;color:var(--ink-2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Competition over country. Muted on purpose: it answers "which division is
+   this" once you have already found the row, so it must not compete with the
+   player or the opponent for first read. */
+.agc{min-width:0;font-size:12px;color:var(--ink-2);overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.agc small{display:block;font-size:11px;color:var(--mut);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .agt{font:600 12px/1 var(--mono);color:var(--mut);font-variant-numeric:tabular-nums}
 /* Home/away, not form. Quiet by design: it is a fact about the fixture, not a
    verdict, so it must not compete with the player's name for attention. Home is
@@ -516,9 +523,16 @@ td.sides>.sidesw{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
   border:1px solid var(--line-2);color:var(--mut)}
 .ven.h{color:var(--red);border-color:color-mix(in srgb,var(--red) 34%,transparent);
   background:color-mix(in srgb,var(--red) 8%,transparent)}
+/* Narrow: drop the competition column first -- it is the one piece of context a
+   reader can recover by opening the player. Time and venue survive longer
+   because they are what the calendar is FOR. */
+@media(max-width:1180px){
+  .agrow{grid-template-columns:1.2fr 1.2fr 62px 74px}
+  .agc{display:none}
+}
 @media(max-width:860px){
-  /* Kick-off time and signal are the first things to go on a phone; who plays
-     whom is the row's reason for existing. */
+  /* Kick-off time and venue go last; who plays whom is the row's reason for
+     existing and must survive to the narrowest width. */
   .agrow{grid-template-columns:1fr 1fr}
   .agt,.ags{display:none}
 }
