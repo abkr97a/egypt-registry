@@ -819,7 +819,7 @@ function egyptFixtures(list){
         +(c.players.length>6?` +${c.players.length-6} more`:"");
       return `<tr>
         <td><b>${crest}${esc(c.club)}</b><small class="cn">${esc(names)}</small></td>
-        <td class="hide-s"><b>${esc(c.fx.date||"—")}</b><small class="cn">${esc(c.fx.time||"")}</small></td>
+        <td class="hide-s"><b>${esc(c.fx.date||"—")}</b><small class="cn">${koTime(c.fx)}</small></td>
         <td>${c.fx.ha==="H"?'<span class="tag">Home</span>':'<span class="tag">Away</span>'} ${ocrest}${esc(c.fx.opp||"—")}</td>
         <td class="r num">${c.players.length}</td></tr>`;
     }).join("")}</tbody></table>`;
@@ -837,14 +837,42 @@ function egyptFixtures(list){
    sparse, and gets better rather than worse as more leagues publish. */
 const DAY=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
+/* ---------- kickoff times, in Cairo ----------
+   f.utc is a real instant, stamped at scrape time. f.time is the raw string we
+   scraped from transfermarkt.US, which renders in US EASTERN -- six hours
+   behind CET. It was being shown verbatim, so a Finnish 16:00 kickoff displayed
+   as "9:00 AM": wrong, but plausible enough to survive.
+
+   The audience is in Egypt, so Cairo is the clock that matters. Everything
+   derives from f.utc; f.time is only a fallback for a fixture scraped before
+   the utc field existed, and is marked in the UI when used. */
+const CAIRO="Africa/Cairo";
+const koTime=f=>{
+  if(!f||!f.utc)return f&&f.time?esc(f.time):"";
+  const d=new Date(f.utc);
+  return isNaN(d)?"":d.toLocaleTimeString("en-GB",
+    {timeZone:CAIRO,hour:"2-digit",minute:"2-digit",hour12:false});
+};
+// The Cairo calendar date. A late kickoff can land on a different DAY in Cairo
+// than at the venue, so grouping must use the same zone the times are shown in
+// or a row appears under a heading it contradicts.
+const koKey=f=>{
+  if(!f)return"?";
+  if(f.utc){const d=new Date(f.utc);
+    if(!isNaN(d))return d.toLocaleDateString("en-CA",{timeZone:CAIRO});}
+  const t=Date.parse(f.date||"");
+  return isNaN(t)?"?":new Date(t).toISOString().slice(0,10);
+};
+
 function agendaHTML(list){
   const byDay=new Map();
   list.forEach(p=>{
     const f=NEXTM[p.tm_id];
-    // Parsed, not string-keyed. "Aug 1" sorts before "Aug 11" before "Aug 2"
-    // alphabetically, which is exactly the ordering the list view suffers from.
-    const t=Date.parse(f.date||"");
-    const key=isNaN(t)?"?":new Date(t).toISOString().slice(0,10);
+    // Keyed and sorted on the Cairo date, not the scraped string. "Aug 1" sorts
+    // before "Aug 11" before "Aug 2" alphabetically, which is exactly the
+    // ordering the list view suffers from.
+    const key=koKey(f);
+    const t=key==="?"?NaN:Date.parse(key+"T00:00:00Z");
     if(!byDay.has(key))byDay.set(key,{t,label:f.date,items:[]});
     byDay.get(key).items.push({p,f});
   });
@@ -853,14 +881,21 @@ function agendaHTML(list){
   return days.map(([key,d])=>{
     const dt=isNaN(d.t)?null:new Date(d.t);
     const dow=dt?DAY[dt.getUTCDay()]:"";
+    // The heading is rendered from the Cairo key, not from the scraped label --
+    // otherwise a fixture regrouped into a different Cairo day would sit under a
+    // heading naming the day it had at the venue.
+    const label=dt?dt.toLocaleDateString("en-GB",
+      {timeZone:"UTC",day:"numeric",month:"short",year:"numeric"}):(d.label||"date unknown");
     // Today and tomorrow are what a reader checks first; naming them saves
-    // working it out from a date.
-    const today=new Date(); today.setUTCHours(0,0,0,0);
-    const diff=dt?Math.round((dt-today)/86400000):null;
+    // working it out from a date. "Today" means today IN CAIRO, so that it
+    // agrees with the clock the times are shown on.
+    const nowKey=new Date().toLocaleDateString("en-CA",{timeZone:CAIRO});
+    const today=Date.parse(nowKey+"T00:00:00Z");
+    const diff=dt?Math.round((d.t-today)/86400000):null;
     const rel=diff===0?"today":diff===1?"tomorrow":diff>1&&diff<7?`in ${diff} days`:"";
     return `<div class="agday">
       <div class="agdate">
-        <b>${esc(dow)}</b><span>${esc(d.label||"date unknown")}</span>
+        <b>${esc(dow)}</b><span>${esc(label)}</span>
         ${rel?`<i>${esc(rel)}</i>`:""}
         <em>${d.items.length}</em>
       </div>
@@ -871,12 +906,19 @@ function agendaHTML(list){
         // name -- it was the one player-identifying view rendering without one.
         const face=p.photo?`<img class="face" src="${esc(p.photo)}" alt="" loading="lazy">`
           :`<span class="face ini">${esc(initials(p.name))}</span>`;
-        const g=signal(p);
+        // NOT signal(). That grades the player's last 14 matches -- "regular",
+        // "out of favour" -- which is a squad-status judgement, and sitting in a
+        // fixture row it reads as a claim about the match ABOUT TO BE PLAYED.
+        // Home/away is a genuine property of this fixture and is what decides
+        // whether you can actually go and watch it.
+        const venue=f.ha==="H"?`<span class="ven h">HOME</span>`
+          :f.ha==="A"?`<span class="ven a">AWAY</span>`:"";
+        const t=koTime(f);
         return `<div class="agrow" data-id="${esc(p.tm_id)}">
           <span class="agp">${face}<span class="agnm">${esc(p.name)}<small>${esc(p.club||"")}</small></span></span>
           <span class="agv">${f.ha==="H"?"vs":"at"} ${crest}${esc(f.opp||"—")}</span>
-          <span class="agt">${esc(f.time||"")}</span>
-          <span class="ags">${g?`<span class="sig ${g[0]}">${g[1]}</span>`:""}</span>
+          <span class="agt"${f.utc?"":' title="time as published, zone unconfirmed"'}>${t}${f.utc?"":"*"}</span>
+          <span class="ags">${venue}</span>
         </div>`;
       }).join("")}</div>
     </div>`;
@@ -929,7 +971,7 @@ function drawFixtures(){
       <td><span class="who">${p.photo?`<img class="face" src="${esc(p.photo)}" alt="" loading="lazy">`
         :`<span class="face ini">${esc(initials(p.name))}</span>`}<span class="nm"><b>${esc(p.name)}</b>
         <span>${ownc}${esc(p.club||"")}${p.plays_in?` · ${esc(p.plays_in)}`:""}</span></span></span></td>
-      <td class="hide-s"><b>${esc(f.date||"—")}</b><small class="cn">${esc(f.time||"")}</small></td>
+      <td class="hide-s"><b>${esc(f.date||"—")}</b><small class="cn">${koTime(f)}</small></td>
       <td>${f.ha==="H"?'<span class="tag">Home</span>':'<span class="tag">Away</span>'} ${crest}${esc(f.opp||"—")}</td>
       <td class="hide-s">${strip}</td>
       <td class="hide-s">${g?`<span class="sig ${g[0]}">${g[1]}</span>`:`<span class="nostrip">—</span>`}</td></tr>`;
@@ -951,11 +993,14 @@ function drawFixtures(){
       <button data-fxv="list"${S.fxview==="list"?' class="on"':""}>List</button>
       <button data-fxv="agenda"${S.fxview==="agenda"?' class="on"':""}>Calendar</button>
     </div>`;
+  // An unlabelled clock is what made the timezone bug survive: "9:00 AM" looked
+  // like data. Naming the zone means a wrong time can be recognised as wrong.
+  const tzn=`<span class="tzn">times in Cairo</span>`;
   const abroadBlock=list.length
-    ? `<div class="fxgrp"><div class="ntgh"><b>Abroad</b><span>${list.length} player${list.length===1?"":"s"}</span>${modes}</div>
+    ? `<div class="fxgrp"><div class="ntgh"><b>Abroad</b><span>${list.length} player${list.length===1?"":"s"}</span>${tzn}${modes}</div>
         ${S.fxview==="agenda"
           ? agendaHTML(list)
-          : `<table class="grid"><thead><tr><th class="c-save"></th>${head}<th class="hide-s">Signal</th></tr></thead><tbody>${body}</tbody></table>`}</div>`
+          : `<table class="grid"><thead><tr><th class="c-save"></th>${head}<th class="hide-s" title="How often the player has featured across his last 14 matches — squad status, not a prediction about this fixture">Squad status</th></tr></thead><tbody>${body}</tbody></table>`}</div>`
     : "";
   const egyBlock=egy.length
     ? `<div class="fxgrp"><div class="ntgh"><b class="eg">Egyptian league</b><span>${nEgyClubs} club${nEgyClubs===1?"":"s"} · ${egy.length} player${egy.length===1?"":"s"}</span></div>
