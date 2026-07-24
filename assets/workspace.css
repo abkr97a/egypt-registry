@@ -381,6 +381,21 @@ td.sides>.sidesw{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
 .grid tbody tr:hover .star{color:var(--mut)}
 .grid tbody tr:hover .star.on{color:var(--warn)}
 
+/* Saved-only, in the header so it is reachable from every view. Gold when on,
+   matching the star it filters by — the connection between the two has to be
+   obvious or the toggle reads as an unrelated control. */
+.savedtgl{font:600 12px/1 var(--sans);color:var(--ink-2);white-space:nowrap;
+  border:1px solid var(--line-2);border-radius:7px;padding:7px 10px;flex:none}
+.savedtgl:hover{border-color:var(--warn);color:var(--warn)}
+.savedtgl.on{border-color:var(--warn);color:var(--warn);
+  background:color-mix(in srgb,var(--warn) 12%,transparent)}
+.savedtgl[hidden]{display:none}
+@media(max-width:860px){
+  /* On a phone the header already carries a menu button, four tabs and search.
+     The toggle keeps its star and count and drops the words. */
+  .savedtgl{padding:7px 8px;font-size:11.5px}
+}
+
 /* Only in My list: what is saved, and how to move it somewhere else. */
 .sharebar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
   padding:0 12px 14px;font-size:12.5px;color:var(--mut)}

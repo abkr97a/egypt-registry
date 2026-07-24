@@ -12,7 +12,7 @@ const num=v=>{const n=parseInt(v,10);return isNaN(n)?0:n;};
 // fxsort is separate from sort: the roster and the fixtures list answer different
 // questions, and carrying one sort across both meant opening Fixtures showed them
 // alphabetically when the only useful order is who plays soonest.
-const S={view:"roster",q:"",sort:"name",dir:1,fxsort:"date",fxdir:1,sel:null,
+const S={view:"roster",q:"",sort:"name",dir:1,fxsort:"date",fxdir:1,sel:null,onlySaved:false,
          f:{track:new Set(),region:new Set(),club:new Set(),caps:new Set(),pos:new Set(),age:new Set(),form:new Set()}};
 // A player between clubs is available now and needs no fee — the single most
 // actionable state in the dossier, and previously only findable by searching the
@@ -261,11 +261,15 @@ function passes(p,skip){
   return true;
 }
 function rows(){
-  // "My list" narrows the same population every other view uses, rather than
-  // being a separate table. That way the facets, the search box and the sort all
-  // keep working inside it -- a saved list you cannot filter is a worse tool than
-  // the roster it came from.
-  const out=DATA.filter(p=>passes(p)&&(S.view!=="mine"||isSaved(p)));
+  // Saved-only is a FILTER, not a view. Applied here, in the one function every
+  // view draws from, so starring players on the roster then switching to
+  // Scouting or Fixtures shows those same players -- which is how the list gets
+  // used: pick a shortlist, then ask "who is actually playing" about it.
+  //
+  // S.onlySaved is the toggle; the "mine" view is the same thing with a tab, kept
+  // so a saved list is discoverable without knowing the toggle exists.
+  const only=S.onlySaved||S.view==="mine";
+  const out=DATA.filter(p=>passes(p)&&(!only||isSaved(p)));
   const dir=S.dir;
   const key={
     name:p=>(p.name||"").toLowerCase(),
@@ -341,7 +345,7 @@ function drawTable(){
       ? `<div class="empty"><b>${SHORT.size?"No saved player matches these filters":"Nothing saved yet"}</b>${
           SHORT.size?"You have "+SHORT.size+" saved — clear a filter to see them."
                     :"Click the star beside a player to keep him here."}</div>`
-      : `<div class="empty"><b>Nothing matches</b>Try clearing a filter or the search box.</div>`;
+      : `<div class="empty"><b>Nothing matches</b>Try clearing a filter or the search box.${savedNote()}</div>`;
     return;
   }
   const head=COLS.map(([k,label,cls])=>{
@@ -613,14 +617,19 @@ function closePanel(){
 // is what the sidebar facets are for, which is why dual/Egypt-only stopped being
 // tabs. The nav must never restate a filter, or the two can disagree.
 function drawNav(){
-  const n=DATA.length;
+  // With "Saved only" on, every tab counts within the shortlist -- a Fixtures
+  // tab reading 34 while the view draws 3 is the same class of lie as the
+  // 93/91/95 roster counts, and this one would appear the moment anyone used
+  // the toggle.
+  const pool=S.onlySaved?DATA.filter(isSaved):DATA;
+  const n=pool.length;
   // Same rule the view applies, or the tab promises a row it will not draw.
-  const withFix=DATA.filter(p=>NEXTM[p.tm_id]&&!isFree(p)).length;
-  const withMatch=DATA.filter(p=>{const s=status(p);return s&&s.n;}).length;
+  const withFix=pool.filter(p=>NEXTM[p.tm_id]&&!isFree(p)).length;
+  const withMatch=pool.filter(p=>{const s=status(p);return s&&s.n;}).length;
   // caps().total, not natl.length: four players are capped per their profile with
   // no match list published, and counting rows alone dropped them from a view
   // whose whole subject is who has played for whom.
-  const withNat=DATA.filter(p=>caps(p).total).length;
+  const withNat=pool.filter(p=>caps(p).total).length;
   // Four views, not six. Dual and Egypt-only were tabs AND a sidebar facet -- the
   // same cut of the same table, reachable two ways, each able to contradict the
   // other's state. They are a filter, so the filter keeps them; a view is a
@@ -677,7 +686,7 @@ function drawFixtures(){
   let list=rows().filter(p=>NEXTM[p.tm_id]&&!isFree(p));
   $("count").innerHTML=`${list.length}<small>with a fixture</small>`;
   if(!list.length){
-    $("body").innerHTML=`<div class="empty"><b>No upcoming fixtures</b>Leagues publish 26/27 dates at different times, so this fills in through pre-season.</div>`;
+    $("body").innerHTML=`<div class="empty"><b>No upcoming fixtures</b>Leagues publish 26/27 dates at different times, so this fills in through pre-season.${savedNote()}</div>`;
     return;
   }
   // Default to soonest first. rows() has already sorted by the roster's key,
@@ -769,7 +778,7 @@ function drawNational(){
   const list=rows().filter(p=>caps(p).total);
   $("count").innerHTML=`${list.length}<small>with caps</small>`;
   if(!list.length){
-    $("body").innerHTML=`<div class="empty"><b>Nobody matches</b>No player in this filter has a national-team appearance.</div>`;
+    $("body").innerHTML=`<div class="empty"><b>Nobody matches</b>No player in this filter has a national-team appearance.${savedNote()}</div>`;
     return;
   }
   // Every side he has played for, senior first, as badges. This is what the old
@@ -841,7 +850,7 @@ function drawScouting(){
   const list=rows().filter(p=>{const s=status(p);return s&&s.n;});
   $("count").innerHTML=`${list.length}<small>with match data</small>`;
   if(!list.length){
-    $("body").innerHTML=`<div class="empty"><b>Nobody matches</b>No player in this filter has recent club match data.</div>`;
+    $("body").innerHTML=`<div class="empty"><b>Nobody matches</b>No player in this filter has recent club match data.${savedNote()}</div>`;
     return;
   }
   const row=p=>{
@@ -885,7 +894,30 @@ function drawBody(){
   if(S.view==="scout")return drawScouting();
   drawTable();
 }
-function draw(){ drawNav(); drawFilters(); drawBody(); }
+// The saved-only toggle. Hidden until something is saved, because a control that
+// can only ever return nothing is noise. Inside "My list" it is redundant -- that
+// view is already saved-only -- so it hides there too rather than offering a
+// switch that does nothing.
+// Appended to an empty view when "Saved only" is on. Without it a shortlist of
+// three players opening Fixtures reads "No upcoming fixtures" -- true of those
+// three, and easily misread as true of the registry.
+const savedNote=()=>S.onlySaved
+  ? ` Showing only your ${SHORT.size} saved player${SHORT.size===1?"":"s"} — turn off “Saved only” to see everyone.`
+  : "";
+function drawSavedToggle(){
+  const b=$("savedtgl");
+  if(!b)return;
+  const show=SHORT.size>0&&S.view!=="mine";
+  b.hidden=!show;
+  if(!show)return;
+  b.className="savedtgl"+(S.onlySaved?" on":"");
+  b.textContent=(S.onlySaved?"★ ":"☆ ")+"Saved only ("+SHORT.size+")";
+  b.title=S.onlySaved
+    ? "Showing only your saved players — click to show everyone"
+    : "Show only your saved players, in this view and the others";
+  b.onclick=()=>{S.onlySaved=!S.onlySaved;draw();};
+}
+function draw(){ drawNav(); drawSavedToggle(); drawFilters(); drawBody(); }
 
 async function boot(){
   const load=n=>fetch(`data/${n}.json`).then(r=>r.json()).catch(()=>({}));
