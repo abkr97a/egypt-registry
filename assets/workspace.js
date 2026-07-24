@@ -46,6 +46,14 @@ const isSaved=p=>SHORT.has(p.tm_id);
 function toggleSave(id){
   SHORT.has(id)?SHORT.delete(id):SHORT.add(id);
   listSet(SHORT);
+  // Unsaving the LAST player must also release the saved-only filter. The toggle
+  // hides itself when the list is empty, so leaving the flag set left the page
+  // filtered to nothing with no visible control to undo it -- an empty screen and
+  // no way back. Same for the My list view, which would sit there showing zero.
+  if(!SHORT.size){
+    S.onlySaved=false;
+    if(S.view==="mine")S.view="roster";
+  }
   // Redraw the nav too: its count is the only thing on screen that says how
   // many are saved, and a star that does not move that number reads as broken.
   draw();
@@ -406,6 +414,10 @@ function drawTable(){
     $("clearlist").onclick=()=>{
       if(!confirm(`Remove all ${SHORT.size} saved players?`))return;
       SHORT=new Set(); listSet(SHORT);
+      // Release the filter as well, for the same reason toggleSave does: the
+      // toggle hides on an empty list, so a set flag would leave the roster
+      // filtered to nothing with nothing on screen able to undo it.
+      S.onlySaved=false;
       S.view="roster";
       draw();
     };
@@ -905,6 +917,10 @@ const savedNote=()=>S.onlySaved
   ? ` Showing only your ${SHORT.size} saved player${SHORT.size===1?"":"s"} — turn off “Saved only” to see everyone.`
   : "";
 function drawSavedToggle(){
+  // Belt and braces: the filter can never be ON with an empty list, whichever
+  // route emptied it. The two callers clear it themselves, but this runs on every
+  // draw, so a future path that removes a save cannot recreate the trap.
+  if(!SHORT.size)S.onlySaved=false;
   const b=$("savedtgl");
   if(!b)return;
   const show=SHORT.size>0&&S.view!=="mine";
@@ -917,7 +933,10 @@ function drawSavedToggle(){
     : "Show only your saved players, in this view and the others";
   b.onclick=()=>{S.onlySaved=!S.onlySaved;draw();};
 }
-function draw(){ drawNav(); drawSavedToggle(); drawFilters(); drawBody(); }
+// drawSavedToggle FIRST: it normalises S.onlySaved against an empty list, and the
+// nav counts read that flag. Called after drawNav, the nav would spend one pass
+// counting against a filter the toggle is about to clear.
+function draw(){ drawSavedToggle(); drawNav(); drawFilters(); drawBody(); }
 
 async function boot(){
   const load=n=>fetch(`data/${n}.json`).then(r=>r.json()).catch(()=>({}));
