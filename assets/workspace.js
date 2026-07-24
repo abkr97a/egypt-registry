@@ -46,17 +46,32 @@ function listSet(s){
   try{ localStorage.setItem(LIST_KEY,JSON.stringify([...s])); }catch(_){}
 }
 let SHORT=new Set();
+// Ids imported from a ?list= link while signed out. Held apart from SHORT so
+// that signing in can push them up as the reader's own choice, without also
+// adopting whatever the previous person on this browser had starred.
+let SHARED=new Set();
 const isSaved=p=>SHORT.has(p.tm_id);
 function toggleSave(id){
+  // A shortlist needs an account, exactly as notes do. Both are the scout's own
+  // judgement rather than public record, and having one gated and the other not
+  // was arbitrary from the reader's side: the same star silently meant "kept
+  // forever" or "kept until this browser forgets" depending on a state nothing
+  // on the row showed.
+  //
+  // Saving is also the natural moment to ask. You have found someone worth
+  // keeping, so the account is the thing that keeps him -- not a toll charged
+  // before you have seen anything.
+  if(typeof Auth==="undefined"||!Auth.user){
+    authOpen("signin");
+    return;
+  }
   const adding=!SHORT.has(id);
   adding?SHORT.add(id):SHORT.delete(id);
   listSet(SHORT);
-  // Mirror to the server when signed in, and do not wait for it. The star must
-  // respond instantly; if the write fails the local list is still correct and the
-  // next sign-in merges both directions.
-  if(typeof Auth!=="undefined"&&Auth.user){
-    (adding?Auth.track(id):Auth.untrack(id)).catch(()=>{});
-  }
+  // Mirror to the server, and do not wait for it. The star must respond
+  // instantly; if the write fails the local copy is still correct and the next
+  // sign-in reconciles from the server.
+  (adding?Auth.track(id):Auth.untrack(id)).catch(()=>{});
   // Unsaving the LAST player must also release the saved-only filter. The toggle
   // hides itself when the list is empty, so leaving the flag set left the page
   // filtered to nothing with no visible control to undo it -- an empty screen and
@@ -321,10 +336,15 @@ const COLS=[
   ["caps","Caps S/Y","r hide-s"],
   ["apps","Apps","r"],["goals","G","r"],["mv","Value","r"],
 ];
-// One builder, so the star looks and behaves the same in every view.
+// One builder, so the star looks and behaves the same in every view. The label
+// says what will actually happen: signed out, the star opens sign-in rather than
+// saving, and a control should never promise something it does not do.
+const starLabel=p=>(typeof Auth!=="undefined"&&Auth.user)
+  ?(isSaved(p)?"Remove from your list":"Save to your list")
+  :"Sign in to save players to your list";
 const starCell=p=>`<td class="c-save"><button class="star${isSaved(p)?" on":""}" `
-  +`data-save="${esc(p.tm_id)}" title="${isSaved(p)?"Remove from your list":"Save to your list"}" `
-  +`aria-label="${isSaved(p)?"Remove from your list":"Save to your list"}">${isSaved(p)?"★":"☆"}</button></td>`;
+  +`data-save="${esc(p.tm_id)}" title="${esc(starLabel(p))}" `
+  +`aria-label="${esc(starLabel(p))}">${isSaved(p)?"★":"☆"}</button></td>`;
 // Senior in red because it is the number that ends eligibility; youth in muted
 // grey because under Article 9 it changes nothing. A player with 0/26 is fully
 // available and a player with 7/26 is not, and that has to read at a glance.
@@ -361,11 +381,20 @@ function drawTable(){
     // In My list an empty result usually means a facet is hiding saved players,
     // not that nothing is saved. Say which, or the reader clears a list that was
     // never empty.
-    $("body").innerHTML=S.view==="mine"
-      ? `<div class="empty"><b>${SHORT.size?"No saved player matches these filters":"Nothing saved yet"}</b>${
+    // Signed out the list is empty for a reason the reader can fix, and it is
+    // not "you have saved nobody" -- saying that would invite them to look for a
+    // star that will not save. Say what is actually true and offer the way in.
+    const mineEmpty=(typeof Auth!=="undefined"&&!Auth.user)
+      ? `<div class="empty"><b>Your list lives with your account</b>Sign in to keep a
+           shortlist and private notes — they follow you to any device.
+           <button class="emptygo" id="emptysignin">Sign in</button></div>`
+      : `<div class="empty"><b>${SHORT.size?"No saved player matches these filters":"Nothing saved yet"}</b>${
           SHORT.size?"You have "+SHORT.size+" saved — clear a filter to see them."
-                    :"Click the star beside a player to keep him here."}</div>`
+                    :"Click the star beside a player to keep him here."}</div>`;
+    $("body").innerHTML=S.view==="mine"
+      ? mineEmpty
       : `<div class="empty"><b>Nothing matches</b>Try clearing a filter or the search box.${savedNote()}</div>`;
+    const es=$("emptysignin"); if(es)es.onclick=()=>authOpen("signin");
     return;
   }
   const head=COLS.map(([k,label,cls])=>{
@@ -1247,21 +1276,47 @@ function authClose(){ AuthUI.close(); }
 
 /* The dialog itself lives in auth.js, shared with the landing page. Two copies
    of a login form is two places for every bug. */
-function authOpen(mode){ AuthUI.open(mode, ()=>{ drawAccount(); draw(); }); }
+function authOpen(mode){
+  AuthUI.open(mode, ()=>{
+    if(Auth.user){
+      // Signed in: pull this account's shortlist down.
+      afterSignIn();
+      return;
+    }
+    // Signed out: the shortlist belongs to the account that just left. Clearing
+    // it is not data loss -- the server keeps it, and it comes back on the next
+    // sign-in. Leaving it would show one person's saved players to whoever uses
+    // this browser next.
+    SHORT=new Set(); SHARED.clear(); listSet(SHORT);
+    S.onlySaved=false;
+    if(S.view==="mine")S.view="roster";
+    drawAccount(); draw();
+  });
+}
 
-/* Merge, never replace. Someone who starred players signed out, then signs in,
-   must not lose them -- and the server list must not be lost either. Both
-   directions are pushed so the two agree afterwards. */
+/* The server is the shortlist. localStorage is only a cache of it, so that the
+   stars are already drawn on the next visit before Supabase answers.
+
+   This used to MERGE a signed-out list into the account, which was right while
+   saving worked signed out. It no longer does, so there is no unsaved local list
+   to rescue -- and merging now would be actively wrong: it would pull whatever
+   the previous person on this browser had starred into the account of whoever
+   signs in next.
+
+   One exception, kept deliberately: ?list= shared links still merge, because
+   those are an explicit act by the person clicking them. */
 async function afterSignIn(){
   try{
     const server=await Auth.tracked();
     if(server){
-      const local=new Set(SHORT);
-      for(const id of local) if(!server.has(id)) await Auth.track(id);
-      SHORT=new Set([...server,...local]);
+      // Anything starred from a shared link before signing in is the reader's
+      // own choice and gets pushed up; everything else comes down.
+      for(const id of SHARED) if(!server.has(id)) { await Auth.track(id); server.add(id); }
+      SHORT=new Set(server);
       listSet(SHORT);
     }
-  }catch(_){ /* offline: keep the local list, try again next sign-in */ }
+  }catch(_){ /* offline: keep the cached list and try again next sign-in */ }
+  SHARED.clear();
   drawAccount();
   draw();
 }
@@ -1294,12 +1349,14 @@ async function boot(){
   // Left in, the filter made the file say 172 and the page say 170.
   DATA=DATA||[];
 
-  SHORT=listGet();
+  // Only a signed-in reader has a shortlist, so only load the cache when a
+  // session exists. Otherwise a sign-out would leave the previous user's stars
+  // on screen for whoever opens the browser next.
+  SHORT=Auth.load()?listGet():new Set();
 
   // Restore a session if there is one, then draw the account button. Deliberately
   // NOT awaited before the first draw below: the page must paint from the JSON it
   // already has, whether or not Supabase answers.
-  Auth.load();
   drawAccount();
   $("authscrim").onclick=authClose;
   if(Auth.session){
@@ -1324,9 +1381,15 @@ async function boot(){
     shared.split(",").map(s=>s.trim()).forEach(id=>{
       // Only ids that exist here. A stale or hand-edited link would otherwise
       // inflate the counter with players the page cannot draw.
-      if(id&&known.has(id)&&!SHORT.has(id)){SHORT.add(id);added++;}
+      if(id&&known.has(id)&&!SHORT.has(id)){SHORT.add(id);SHARED.add(id);added++;}
     });
-    if(added){listSet(SHORT);S.view="mine";}
+    if(added){
+      // Persisted only for a signed-in reader. Signed out this stays in memory:
+      // the link still works for the visit, but nothing is written to a browser
+      // that has no account to attach it to.
+      if(Auth.user){SHARED.forEach(id=>Auth.track(id).catch(()=>{}));listSet(SHORT);}
+      S.view="mine";
+    }
     // Drop the parameter so a refresh does not re-import, and so the address bar
     // reflects what is actually shown.
     history.replaceState(null,"",location.pathname);

@@ -456,8 +456,13 @@ td.sides>.sidesw{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
   border:1px solid var(--line-2);border-radius:7px;padding:7px 11px}
 .sharebar button:hover{border-color:var(--red);color:var(--red)}
 
-.empty{padding:60px 20px;text-align:center;color:var(--mut)}
+.empty{padding:60px 20px;text-align:center;color:var(--mut);max-width:44ch;margin:0 auto;
+  font-size:13.5px;line-height:1.6}
 .empty b{display:block;color:var(--ink);font-size:15px;margin-bottom:6px}
+/* An empty state that names a fix should carry the fix, not describe it. */
+.emptygo{display:block;margin:16px auto 0;padding:9px 20px;border-radius:8px;
+  background:var(--red);color:#fff;font:700 13px/1 var(--sans)}
+.emptygo:hover{filter:brightness(1.08)}
 
 /* ---------- detail panel ---------- */
 .panel{position:fixed;top:0;right:0;bottom:0;width:min(470px,92vw);background:var(--surface);
