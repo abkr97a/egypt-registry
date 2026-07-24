@@ -20,6 +20,37 @@ const S={view:"roster",q:"",sort:"name",dir:1,fxsort:"date",fxdir:1,sel:null,
 const isFree=p=>/free agent|without club/i.test(p.club||"");
 const capBand=p=>{const c=caps(p);return c.senior?"senior":c.youth?"youth":"none";};
 
+/* ---------- shortlist ----------
+   Saved players, kept in localStorage. No account, no email, no password, no
+   server: the same mechanism that already remembers the theme.
+
+   The honest limit, stated rather than discovered: this is per BROWSER. A list
+   made on a laptop is not the list on a phone. Sharing is by URL instead
+   (?list=id,id) so "send me your shortlist" is a link, still with no account.
+
+   Every read goes through these two functions so a corrupted or absent value
+   degrades to an empty list rather than throwing on boot -- localStorage can be
+   disabled entirely, and a scouting page must still render when it is. */
+const LIST_KEY="reg-shortlist";
+function listGet(){
+  try{
+    const raw=localStorage.getItem(LIST_KEY);
+    return new Set(raw?JSON.parse(raw):[]);
+  }catch(_){ return new Set(); }
+}
+function listSet(s){
+  try{ localStorage.setItem(LIST_KEY,JSON.stringify([...s])); }catch(_){}
+}
+let SHORT=new Set();
+const isSaved=p=>SHORT.has(p.tm_id);
+function toggleSave(id){
+  SHORT.has(id)?SHORT.delete(id):SHORT.add(id);
+  listSet(SHORT);
+  // Redraw the nav too: its count is the only thing on screen that says how
+  // many are saved, and a star that does not move that number reads as broken.
+  draw();
+}
+
 /* ---------- derived ---------- */
 const GULF=new Set(["Qatar","United Arab Emirates","Saudi Arabia","Kuwait","Bahrain","Oman","Jordan","Iraq",
   "Syria","Lebanon","Yemen"]);
@@ -230,7 +261,11 @@ function passes(p,skip){
   return true;
 }
 function rows(){
-  const out=DATA.filter(p=>passes(p));
+  // "My list" narrows the same population every other view uses, rather than
+  // being a separate table. That way the facets, the search box and the sort all
+  // keep working inside it -- a saved list you cannot filter is a worse tool than
+  // the roster it came from.
+  const out=DATA.filter(p=>passes(p)&&(S.view!=="mine"||isSaved(p)));
   const dir=S.dir;
   const key={
     name:p=>(p.name||"").toLowerCase(),
@@ -254,11 +289,18 @@ function rows(){
 
 /* ---------- render: table ---------- */
 const COLS=[
+  // The star leads the row: it is an action, not a fact, and a reader looking for
+  // "save this one" should not have to scan across nine data columns to find it.
+  ["save","","c-save"],
   ["name","Player",""],["track","Track","hide-s"],["age","Age","r"],
   ["club","Club","hide-s"],["form","Last 10","hide-s"],["sig","Signal","hide-s"],
   ["caps","Caps S/Y","r hide-s"],
   ["apps","Apps","r"],["goals","G","r"],["mv","Value","r"],
 ];
+// One builder, so the star looks and behaves the same in every view.
+const starCell=p=>`<td class="c-save"><button class="star${isSaved(p)?" on":""}" `
+  +`data-save="${esc(p.tm_id)}" title="${isSaved(p)?"Remove from your list":"Save to your list"}" `
+  +`aria-label="${isSaved(p)?"Remove from your list":"Save to your list"}">${isSaved(p)?"★":"☆"}</button></td>`;
 // Senior in red because it is the number that ends eligibility; youth in muted
 // grey because under Article 9 it changes nothing. A player with 0/26 is fully
 // available and a player with 7/26 is not, and that has to read at a glance.
@@ -278,15 +320,34 @@ function capsCell(p){
   return `<span class="caps" title="${esc(tip)}">`
     +`<b class="${cls}">${c.senior}</b><i>/</i><span class="y">${c.youth}</span></span>`;
 }
+// Row clicks open the panel; the star does not. Without stopPropagation a save
+// also opens the detail panel, so every star press costs a dismissal.
+function wireRows(){
+  $("body").querySelectorAll("button[data-save]").forEach(b=>b.onclick=e=>{
+    e.stopPropagation();
+    toggleSave(b.dataset.save);
+  });
+  $("body").querySelectorAll("tr[data-id]").forEach(tr=>tr.onclick=()=>openPanel(tr.dataset.id));
+}
 function drawTable(){
   const list=rows();
   $("count").innerHTML=`${list.length}<small>${list.length===DATA.length?"players":"of "+DATA.length}</small>`;
 
   if(!list.length){
-    $("body").innerHTML=`<div class="empty"><b>Nothing matches</b>Try clearing a filter or the search box.</div>`;
+    // In My list an empty result usually means a facet is hiding saved players,
+    // not that nothing is saved. Say which, or the reader clears a list that was
+    // never empty.
+    $("body").innerHTML=S.view==="mine"
+      ? `<div class="empty"><b>${SHORT.size?"No saved player matches these filters":"Nothing saved yet"}</b>${
+          SHORT.size?"You have "+SHORT.size+" saved — clear a filter to see them."
+                    :"Click the star beside a player to keep him here."}</div>`
+      : `<div class="empty"><b>Nothing matches</b>Try clearing a filter or the search box.</div>`;
     return;
   }
   const head=COLS.map(([k,label,cls])=>{
+    // The star column sorts nothing — it is a button, and giving it a sort
+    // arrow would promise an ordering that does not exist.
+    if(k==="save")return `<th class="${cls}"></th>`;
     const on=S.sort===k;
     return `<th class="${cls}${on?" sorted":""}" data-sort="${k}">${esc(label)}<span class="ar">${on?(S.dir>0?"▲":"▼"):"▲"}</span></th>`;
   }).join("");
@@ -303,6 +364,7 @@ function drawTable(){
     const g=signal(p);
     const st=p.st||{};
     return `<tr data-id="${esc(p.tm_id)}"${S.sel===p.tm_id?' class="sel"':""}>
+      ${starCell(p)}
       <td><span class="who">${face}<span class="nm"><b>${esc(p.name)}</b>
         <span>${esc(p.position||"")}${p.national_team?" · "+esc(p.national_team):""}</span></span></span></td>
       <td class="hide-s"><span class="tag ${p.track}">${p.track==="dual"?"Dual":"Egypt only"}</span></td>
@@ -317,7 +379,33 @@ function drawTable(){
       <td class="r num">${esc(p.mv_now||"—")}</td></tr>`;
   }).join("");
 
-  $("body").innerHTML=`<table class="grid"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+  // Sharing without accounts: the list travels in the URL, so "send me your
+  // shortlist" is a link. Nothing is uploaded and nobody signs in.
+  const share=S.view==="mine"
+    ? `<div class="sharebar">
+         <span>${SHORT.size} saved in this browser.</span>
+         <button id="copylist">Copy share link</button>
+         <button id="clearlist">Clear list</button>
+       </div>` : "";
+  $("body").innerHTML=share
+    +`<table class="grid"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+  if(S.view==="mine"){
+    $("copylist").onclick=()=>{
+      const u=location.origin+location.pathname+"?list="+[...SHORT].join(",");
+      // clipboard needs a secure context and permission; fall back to showing
+      // the link rather than silently doing nothing.
+      (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject())
+        .then(()=>{$("copylist").textContent="Copied";
+                   setTimeout(()=>{$("copylist").textContent="Copy share link";},1600);})
+        .catch(()=>prompt("Copy this link:",u));
+    };
+    $("clearlist").onclick=()=>{
+      if(!confirm(`Remove all ${SHORT.size} saved players?`))return;
+      SHORT=new Set(); listSet(SHORT);
+      S.view="roster";
+      draw();
+    };
+  }
 
   $("body").querySelectorAll("th[data-sort]").forEach(th=>th.onclick=()=>{
     const k=th.dataset.sort;
@@ -326,7 +414,7 @@ function drawTable(){
     if(S.sort===k)S.dir=-S.dir; else {S.sort=k;S.dir=(k==="name"||k==="club")?1:-1;}
     drawTable();
   });
-  $("body").querySelectorAll("tr[data-id]").forEach(tr=>tr.onclick=()=>openPanel(tr.dataset.id));
+  wireRows();
 }
 
 /* ---------- render: filters ---------- */
@@ -546,6 +634,11 @@ function drawNav(){
     ["scout","Scouting",withMatch,"Squad status across the last ten club matchdays"],
     ["fix","Fixtures",withFix,"Next match for each player's club"],
     ["nat","National",withNat,"National-team appearances and what they mean for eligibility"],
+    // Last, and only once something is in it. An always-visible "My list 0" is a
+    // permanent reminder of an empty box; the star teaches the feature better
+    // than a tab nobody has filled.
+    ...(SHORT.size?[["mine","My list",SHORT.size,
+        "Players you saved — kept in this browser, no account needed"]]:[]),
   ].map(([k,l,c,t])=>`<button data-v="${k}" title="${esc(t)}"${S.view===k?' class="on"':""}>${esc(l)}<span class="n">${c}</span></button>`).join("");
   $("nav").querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>{
     S.view=b.dataset.v;
@@ -607,6 +700,7 @@ function drawFixtures(){
     const strip=stripHTML(p,6);
     const g=signal(p);
     return `<tr data-id="${esc(p.tm_id)}">
+      ${starCell(p)}
       <td><span class="who">${p.photo?`<img class="face" src="${esc(p.photo)}" alt="" loading="lazy">`
         :`<span class="face ini">${esc(initials(p.name))}</span>`}<span class="nm"><b>${esc(p.name)}</b>
         <span>${ownc}${esc(p.club||"")}${p.plays_in?` · ${esc(p.plays_in)}`:""}</span></span></span></td>
@@ -623,7 +717,7 @@ function drawFixtures(){
     const on=S.fxsort===k;
     return `<th class="${cls}${on?" sorted":""}" data-fx="${k}">${esc(label)}<span class="ar">${on?(S.fxdir>0?"▲":"▼"):"▲"}</span></th>`;
   }).join("");
-  $("body").innerHTML=`<table class="grid"><thead><tr>${head}<th class="hide-s">Signal</th></tr></thead><tbody>${body}</tbody></table>`;
+  $("body").innerHTML=`<table class="grid"><thead><tr><th class="c-save"></th>${head}<th class="hide-s">Signal</th></tr></thead><tbody>${body}</tbody></table>`;
   $("body").querySelectorAll("th[data-fx]").forEach(th=>th.onclick=()=>{
     const k=th.dataset.fx;
     // Dates and text both read best ascending -- soonest first, A to Z. Form is
@@ -631,7 +725,7 @@ function drawFixtures(){
     if(S.fxsort===k)S.fxdir=-S.fxdir; else {S.fxsort=k;S.fxdir=k==="form"?-1:1;}
     drawFixtures();
   });
-  $("body").querySelectorAll("tr[data-id]").forEach(tr=>tr.onclick=()=>openPanel(tr.dataset.id));
+  wireRows();
 }
 
 /* ---------- view: national teams ---------- */
@@ -656,13 +750,13 @@ const NATBUCKETS=[
 // than in "Senior caps for Egypt" and the badge rows started at three different
 // x-positions — three tables reading as three unrelated lists rather than one
 // page. Same reason Scouting mode carries a colgroup.
-const NTCOLS=`<colgroup><col class="c-pl"><col class="c-ag"><col class="c-sd"><col class="c-cp"></colgroup>`;
+const NTCOLS=`<colgroup><col class="c-save"><col class="c-pl"><col class="c-ag"><col class="c-sd"><col class="c-cp"></colgroup>`;
 // This table shipped without a thead, alone among the four views. Two columns of
 // bare numbers -- an age and a senior/youth pair -- sat unlabelled, so "21" and
 // "8 / 26" had to be guessed at. Not sortable, unlike the roster's: the buckets
 // are the sort, and a click that reordered rows across three groups would undo
 // the only structure the view has.
-const NTHEAD=`<thead><tr><th>Player</th><th class="r hide-s">Age</th>
+const NTHEAD=`<thead><tr><th class="c-save"></th><th>Player</th><th class="r hide-s">Age</th>
   <th class="hide-s">National sides · appearances</th>
   <th class="r" title="Senior caps / youth appearances">Caps S/Y</th></tr></thead>`;
 function natBucket(p){
@@ -723,6 +817,7 @@ function drawNational(){
         <span>${g.length} player${g.length===1?"":"s"}</span></div>
       <p class="ntnote">${esc(note)}</p>
       <table class="grid nttbl">${NTCOLS}${NTHEAD}<tbody>${g.map(p=>`<tr data-id="${esc(p.tm_id)}">
+        ${starCell(p)}
         <td><span class="who">${p.photo?`<img class="face" src="${esc(p.photo)}" alt="" loading="lazy">`
           :`<span class="face ini">${esc(initials(p.name))}</span>`}<span class="nm"><b>${esc(p.name)}</b>
           <span>${esc(p.position||"")} · ${esc(p.club||"")}${p.plays_in?` · ${esc(p.plays_in)}`:""}</span></span></span></td>
@@ -730,7 +825,7 @@ function drawNational(){
         <td class="sides hide-s"><span class="sidesw">${sides(p)}</span></td>
         <td class="r caps-c">${capsCell(p)}</td></tr>`).join("")}</tbody></table></div>`;
   }).join("");
-  $("body").querySelectorAll("tr[data-id]").forEach(tr=>tr.onclick=()=>openPanel(tr.dataset.id));
+  wireRows();
 }
 
 /* ---------- view: scouting ---------- */
@@ -755,6 +850,7 @@ function drawScouting(){
     const ga=(s.g||s.a)?`${s.g?s.g+"G":""}${s.g&&s.a?" ":""}${s.a?s.a+"A":""}`:"—";
     const crest=CRESTS[p.club_id]?`<img class="cc" src="${esc(CRESTS[p.club_id])}" alt="" loading="lazy">`:"";
     return `<tr data-id="${esc(p.tm_id)}">
+      ${starCell(p)}
       <td><span class="who">${p.photo?`<img class="face" src="${esc(p.photo)}" alt="" loading="lazy">`
         :`<span class="face ini">${esc(initials(p.name))}</span>`}<span class="nm"><b>${esc(p.name)}</b>
         <span>${esc(p.age||"")} · ${crest}${esc(p.club||"")}${p.plays_in?` · ${esc(p.plays_in)}`:""}</span></span></span></td>
@@ -764,8 +860,8 @@ function drawScouting(){
       <td class="c">${g?`<span class="sig ${g[0]}">${g[1]}</span>`:`<span class="nostrip">—</span>`}</td>
       <td class="r hide-s"><small class="cn">${esc(s.latest_date||"")}</small></td></tr>`;
   };
-  const cols=`<colgroup><col class="c-pl"><col class="c-st"><col class="c-ta"><col class="c-ga"><col class="c-sg"><col class="c-dt"></colgroup>`;
-  const head=`<thead><tr><th>Player</th><th>Last 10 club games</th>
+  const cols=`<colgroup><col class="c-save"><col class="c-pl"><col class="c-st"><col class="c-ta"><col class="c-ga"><col class="c-sg"><col class="c-dt"></colgroup>`;
+  const head=`<thead><tr><th class="c-save"></th><th>Player</th><th>Last 10 club games</th>
     <th class="hide-s">Squad status</th><th class="r hide-s">G/A</th>
     <th class="c">Signal</th><th class="r hide-s">Last game</th></tr></thead>`;
   $("body").innerHTML=`<div class="sclegend">
@@ -780,7 +876,7 @@ function drawScouting(){
       return `<div class="scgrp"><div class="ntgh"><b>${esc(label)}</b><span>${g.length}</span></div>
         <table class="grid sctbl">${cols}${head}<tbody>${g.map(row).join("")}</tbody></table></div>`;
     }).join("");
-  $("body").querySelectorAll("tr[data-id]").forEach(tr=>tr.onclick=()=>openPanel(tr.dataset.id));
+  wireRows();
 }
 
 function drawBody(){
@@ -801,6 +897,25 @@ async function boot(){
   // abroad — the International facet already says so, in a column built for it.
   // Left in, the filter made the file say 172 and the page say 170.
   DATA=DATA||[];
+
+  SHORT=listGet();
+  // A shared list arrives as ?list=id,id. MERGED, not replaced: opening a
+  // colleague's link must not wipe your own saves, and a replace is
+  // unrecoverable — there is no server copy to restore from.
+  const shared=new URLSearchParams(location.search).get("list");
+  if(shared){
+    const known=new Set(DATA.map(p=>p.tm_id));
+    let added=0;
+    shared.split(",").map(s=>s.trim()).forEach(id=>{
+      // Only ids that exist here. A stale or hand-edited link would otherwise
+      // inflate the counter with players the page cannot draw.
+      if(id&&known.has(id)&&!SHORT.has(id)){SHORT.add(id);added++;}
+    });
+    if(added){listSet(SHORT);S.view="mine";}
+    // Drop the parameter so a refresh does not re-import, and so the address bar
+    // reflects what is actually shown.
+    history.replaceState(null,"",location.pathname);
+  }
   draw();
 
   $("q").oninput=e=>{S.q=e.target.value;drawBody();drawFilters();};
