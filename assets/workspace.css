@@ -355,7 +355,10 @@ td.sides>.sidesw{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
    was being clipped mid-string and left a trailing separator. 360px fits every
    subtitle in the data. */
 .sctbl col.c-pl{width:360px} .sctbl col.c-st{width:210px}
-.sctbl col.c-ta{width:auto}  .sctbl col.c-ga{width:72px}
+.sctbl col.c-ta{width:auto}  .sctbl col.c-ga{width:64px}
+/* Wider than G/A because it carries two lines: the rate, and the clean sheets
+   and goals against it is computed from. */
+.sctbl col.c-gd{width:92px}
 .sctbl col.c-sg{width:120px} .sctbl col.c-dt{width:104px}
 /* The strip gets a fixed 210px -- 171px of blocks plus a little air -- rather
    than the slack. Given the slack it kept drifting further from the name as the

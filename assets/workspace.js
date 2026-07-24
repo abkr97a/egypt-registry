@@ -792,20 +792,17 @@ function openPanel(id){
     //
     // 270 minutes is three full matches: enough that one cameo cannot dominate,
     // low enough that a genuine squad keeper still qualifies.
-    const thin=dr.mins<270;
+    // CAREER ONLY. The recent window moved to the Scouting tab, where it sits in
+    // its own column beside the form strip that shows the same 14 matches -- the
+    // panel was stating twice over what the strip already draws, and "last 14"
+    // beside a career row invited exactly the misreading it was labelled to
+    // prevent.
     dk=`<div class="krow">Career</div>`
       +`<div class="kpis">${kpi(st.a||0,"apps")}${kpi(st.cs||0,"clean sheets")}`
-      +`${kpi(c90,"full 90s")}${kpi(st.y||0,"yellows")}</div>`
-      +`<div class="krow">Last ${dr.played===1?"match":dr.played+" matches"}</div>`
-      +`<div class="kpis">${kpi(dr.played,"played")}${kpi(dr.cs,"clean sheets")}`
-      +`${kpi(dr.ga,"conceded")}`
-      +`${thin?kpi(Math.round(dr.mins/90)+"","90s"):kpi(dr.per90.toFixed(2),"GA / 90")}</div>`;
-    dnote=`<p class="dnote">${thin
-      ? `Only ${dr.mins} minute${dr.mins===1?"":"s"} in the recent window — too little to rate
-         per 90.`
-      : `Goals conceded is his side's, over ${dr.mins} minutes — a team outcome, but the one a
-         keeper is judged on. Career goals conceded is not published, so there is no
-         career rate to compare it against.`}${
+      +`${kpi(c90,"full 90s")}${kpi(st.y||0,"yellows")}</div>`;
+    dnote=`<p class="dnote">${
+      `Career totals. Recent form — goals conceded and clean sheets over his last
+       matches — is in the Scouting tab, beside the run of games it comes from.`}${
       // A scoring goalkeeper is rare enough to be worth a line: 13 of 58 here
       // have a goal or an assist, one of them four goals. Said in the note
       // rather than given a card, because for a keeper it is a curiosity and
@@ -835,10 +832,7 @@ function openPanel(id){
       .filter(f=>f.part==="P"&&(f.min||0)>=60).length;
     dk=`<div class="krow">Career</div>`
       +`<div class="kpis">${kpi(st.a||0,"apps")}${kpi(st.g||0,"goals")}`
-      +`${kpi(st.as||0,"assists")}${kpi(st.m?Math.round(st.m/90):0,"full 90s")}</div>`
-      +`<div class="krow">Last ${dr.played===1?"match":dr.played+" matches"}</div>`
-      +`<div class="kpis">${kpi(dr.played,"played")}${kpi(starts,"60+ min")}`
-      +`${kpi(Math.floor(dr.mins/90),"full 90s")}${kpi(dr.mins,"minutes")}</div>`;
+      +`${kpi(st.as||0,"assists")}${kpi(st.m?Math.round(st.m/90):0,"full 90s")}</div>`;
     dnote=`<p class="dnote">Clean sheets are not shown for outfielders — they belong to the
       whole side, and no individual defensive numbers (tackles, duels) are published outside
       the top leagues. Minutes and selection are his own, and they answer the question a
@@ -1359,17 +1353,20 @@ function drawScouting(){
   const row=p=>{
     const m=MSTATS[p.tm_id]||{}, s=m.status||{}, g=signal(p);
     const strip=stripHTML(p,10);
-    // A goalkeeper's G/A is 0/0 and always will be, so the column that reads
-    // "G/A" for an attacker reads as an empty cell for him. Same slot, the
-    // number his position is actually judged on: goals conceded per 90 for a
-    // keeper, clean sheets alongside it. Defenders keep G/A -- 147 of 200 have
-    // scored or assisted, and for a full-back that IS the distinguishing number.
+    // TWO COLUMNS, not one overloaded cell. G/A means goals and assists for
+    // every player including a keeper -- 13 of 58 keepers here have one, and
+    // hiding that behind a conditional made the column mean different things in
+    // different rows, which is the one thing a column must never do.
+    const ga=(s.g||s.a)?`${s.g?s.g+"G":""}${s.g&&s.a?" ":""}${s.a?s.a+"A":""}`:"—";
+    // The defensive column: goals conceded and clean sheets over the SAME ten
+    // matches the strip to its left draws, so the number and the run of games it
+    // comes from are read together. Empty for anyone who is not a keeper or a
+    // defender -- an outfield attacker has no goals-against to report.
     const dr2=defRecord(p);
-    const ga=isKeeper(p)&&dr2
-      ? (dr2.mins>=270
-          ? `<b>${dr2.per90.toFixed(2)}</b><small class="cn">${dr2.cs} CS · ${dr2.ga} GA</small>`
-          : `<small class="cn">${dr2.played} match${dr2.played===1?"":"es"}</small>`)
-      : (s.g||s.a)?`${s.g?s.g+"G":""}${s.g&&s.a?" ":""}${s.a?s.a+"A":""}`:"—";
+    const def=!dr2?"—"
+      :dr2.mins>=270
+        ? `<b>${dr2.per90.toFixed(2)}</b><small class="cn">${dr2.cs} CS · ${dr2.ga} GA</small>`
+        : `<span class="cn">${dr2.cs} CS · ${dr2.ga} GA</span><small class="cn">${dr2.mins}'</small>`;
     const crest=CRESTS[p.club_id]?`<img class="cc" src="${esc(CRESTS[p.club_id])}" alt="" loading="lazy">`:"";
     return `<tr data-id="${esc(p.tm_id)}">
       ${starCell(p)}
@@ -1379,12 +1376,15 @@ function drawScouting(){
       <td>${strip}</td>
       <td class="hide-s tally"><b>${s.played||0}</b> played · ${s.bench||0} bench · ${s.out||0} out</td>
       <td class="r num hide-s">${esc(ga)}</td>
+      <td class="r num hide-s">${def}</td>
       <td class="c">${g?`<span class="sig ${g[0]}">${g[1]}</span>`:`<span class="nostrip">—</span>`}</td>
       <td class="r hide-s"><small class="cn">${esc(s.latest_date||"")}</small></td></tr>`;
   };
-  const cols=`<colgroup><col class="c-save"><col class="c-pl"><col class="c-st"><col class="c-ta"><col class="c-ga"><col class="c-sg"><col class="c-dt"></colgroup>`;
+  const cols=`<colgroup><col class="c-save"><col class="c-pl"><col class="c-st"><col class="c-ta"><col class="c-ga"><col class="c-gd"><col class="c-sg"><col class="c-dt"></colgroup>`;
   const head=`<thead><tr><th class="c-save"></th><th>Player</th><th>Last 10 club games</th>
-    <th class="hide-s">Squad status</th><th class="r hide-s" title="Goals and assists — for a goalkeeper, goals conceded per 90 with clean sheets and goals against beneath">G/A · GK per 90</th>
+    <th class="hide-s">Squad status</th>
+    <th class="r hide-s" title="Goals and assists in these matches">G/A</th>
+    <th class="r hide-s" title="Goalkeepers and defenders: goals conceded per 90, with clean sheets and goals against, over the same matches shown in the strip">GA / 90</th>
     <th class="c">Signal</th><th class="r hide-s">Last game</th></tr></thead>`;
   $("body").innerHTML=`<div class="sclegend">
       <span><i class="P"></i>played</span><span><i class="B"></i>benched</span>
