@@ -12,7 +12,10 @@ const num=v=>{const n=parseInt(v,10);return isNaN(n)?0:n;};
 // fxsort is separate from sort: the roster and the fixtures list answer different
 // questions, and carrying one sort across both meant opening Fixtures showed them
 // alphabetically when the only useful order is who plays soonest.
-const S={view:"roster",q:"",sort:"name",dir:1,fxsort:"date",fxdir:1,fxview:"list",sel:null,onlySaved:false,
+const S={view:"roster",q:"",sort:"name",dir:1,fxsort:"date",fxdir:1,fxview:"list",
+         // Scouting defaults to most-played first: the table exists to rank, and
+         // an unsorted list makes the reader do the ranking.
+         scsort:"played",scdir:-1,sel:null,onlySaved:false,
          f:{based:new Set(),track:new Set(),region:new Set(),club:new Set(),caps:new Set(),pos:new Set(),age:new Set(),form:new Set()}};
 // A player between clubs is available now and needs no fee — the single most
 // actionable state in the dossier, and previously only findable by searching the
@@ -201,13 +204,47 @@ function caps(p){
   }
   return c;
 }
+/* Squad status over the last ten club games.
+
+   Judged as a SHARE of the games in the window, not on raw counts. The counts
+   assumed a full ten: a player with four matches on record and two starts was
+   measured against thresholds meant for ten, and came out looking marginal when
+   he had started half of everything available.
+
+   "Rotating" was also the fall-through -- anything matching no earlier rule
+   landed there -- so Mohamed El Shenawy, 1 played and 7 on the bench, was called
+   rotating. He is a backup goalkeeper. 30 players with six or more bench
+   appearances carried the same label, which made the one word that should mean
+   "in and out of the side" mean "we could not classify him".
+
+   Benched and out-of-favour are now decided BEFORE rotating, and rotating has to
+   be earned: a real share of starts, not merely the absence of another verdict. */
 function signal(p){
   const s=status(p);
   if(!s||!s.n)return null;
-  if(!s.played)return s.bench>=5?["bench","benched"]:["cold","no minutes"];
-  if(s.played>=8)return ["hot","regular"];
-  if(s.out>=5)return ["cold","out of favour"];
-  return ["mid","rotating"];
+  const n=s.n, played=s.played||0, bench=s.bench||0, out=s.out||0;
+  // Never played: the distinction that matters is whether he is IN the squad and
+  // unused, or not in it at all.
+  if(!played)return bench>=out?["bench","benched"]:["cold","not in squad"];
+
+  // PLAYING FIRST. What a player DID outranks what he did not: Omar Gaber
+  // started five of ten and sat out five, and an out-first rule called him "out
+  // of favour" -- of a man in half the side's games. Half the available matches
+  // is a squad player by any reading.
+  if(played>=n*0.7)return ["hot","regular"];
+  if(played>=n*0.4)return ["mid","rotating"];
+
+  // Below that, HOW he is absent decides the word. An unused substitute is in
+  // the manager's plans; a player left out of the squad is not, and calling both
+  // the same thing loses the distinction a scout is looking for.
+  //
+  // Compared against each other rather than against a threshold: Shefo, four
+  // played and six benched, cleared every fixed bench cut-off and still landed
+  // on "rotating" because 4 of 10 met the rotation share. He is a substitute who
+  // sometimes comes on.
+  if(bench>out)return ["bench","benched"];
+  if(out>=n*0.5)return ["cold","out of favour"];
+  return ["cold","fringe"];
 }
 function formBand(p){
   const g=signal(p);
@@ -1412,11 +1449,51 @@ function drawScouting(){
       <td class="r hide-s"><small class="cn">${esc(s.latest_date||"")}</small></td></tr>`;
   };
   const cols=`<colgroup><col class="c-save"><col class="c-pl"><col class="c-st"><col class="c-ta"><col class="c-ga"><col class="c-gd"><col class="c-sg"><col class="c-dt"></colgroup>`;
-  const head=`<thead><tr><th class="c-save"></th><th>Player</th><th>Last 10 club games</th>
-    <th class="hide-s">Squad status</th>
-    <th class="r hide-s" title="Goals and assists in these matches">G/A</th>
-    <th class="r hide-s" title="Goalkeepers and defenders: goals conceded per 90, with clean sheets and goals against, over the same matches shown in the strip">GA / 90</th>
-    <th class="c">Signal</th><th class="r hide-s">Last game</th></tr></thead>`;
+  // Sortable, like the roster and Fixtures. This was the one table that was not,
+  // and it is the table a scout uses to rank people -- "who is playing most",
+  // "which keeper concedes least" are the questions it exists to answer, and
+  // reading them off an unordered list is work the page should be doing.
+  //
+  // Sorting happens WITHIN each position group, not across them. Comparing a
+  // keeper's minutes to a winger's is exactly what the grouping exists to
+  // prevent, and a global sort would dissolve it.
+  const SCCOLS=[["name","Player",""],["strip","Last 10 club games",""],
+                ["played","Squad status","hide-s"],["ga","G/A","r hide-s"],
+                ["def","GA / 90","r hide-s"],["sig","Signal","c"],
+                ["date","Last game","r hide-s"]];
+  const TITLES={ga:"Goals and assists in these matches",
+    def:"Goalkeepers and defenders: goals conceded per 90, with clean sheets and goals against, over the same matches shown in the strip",
+    played:"Matches started, benched and missed in this window"};
+  const head=`<thead><tr><th class="c-save"></th>${SCCOLS.map(([k,label,cls])=>{
+    const on=S.scsort===k;
+    return `<th class="${cls}${on?" sorted":""}" data-sc="${k}"${TITLES[k]?` title="${esc(TITLES[k])}"`:""}>`
+      +`${esc(label)}<span class="ar">${on?(S.scdir>0?"▲":"▼"):"▲"}</span></th>`;
+  }).join("")}</tr></thead>`;
+
+  // Ranking values. Every one is a number so the comparator stays simple, and
+  // every one reads from the SAME source the cell renders from -- a sort that
+  // ranks on a different figure than the column shows is the worst kind of bug
+  // here, because both look right in isolation.
+  const SIGRANK={regular:5,rotating:4,benched:3,fringe:2,"out of favour":1,"not in squad":0};
+  const sckey=(p,k)=>{
+    const st=(MSTATS[p.tm_id]||{}).status||{};
+    if(k==="name")return p.name||"";
+    if(k==="played"||k==="strip")return st.played||0;
+    if(k==="ga")return (st.g||0)*2+(st.a||0);
+    if(k==="def"){const r=defRecord(p,10);
+      // No record sorts last in both directions rather than as zero: a winger
+      // with no goals-against is not the best defensive record on the page.
+      return r&&r.mins>=270?-r.per90:-Infinity;}
+    if(k==="sig"){const g=signal(p);return g?SIGRANK[g[1]]??0:-1;}
+    if(k==="date")return st.latest_date||"";
+    return 0;
+  };
+  const scsort=arr=>arr.slice().sort((a,b)=>{
+    const x=sckey(a,S.scsort), y=sckey(b,S.scsort);
+    const c=typeof x==="string"?x.localeCompare(y):(x-y);
+    // Name ties broken by name so the order is stable between redraws.
+    return (c||String(a.name).localeCompare(String(b.name)))*S.scdir;
+  });
   $("body").innerHTML=`<div class="sclegend">
       <span><i class="P"></i>played</span><span><i class="B"></i>benched</span>
       <span><i class="O"></i>not in squad</span>
@@ -1428,8 +1505,17 @@ function drawScouting(){
       const g=list.filter(p=>posOf(p)===k);
       if(!g.length)return "";
       return `<div class="scgrp"><div class="ntgh"><b>${esc(label)}</b><span>${g.length}</span></div>
-        <table class="grid sctbl">${cols}${head}<tbody>${g.map(row).join("")}</tbody></table></div>`;
+        <table class="grid sctbl">${cols}${head}<tbody>${scsort(g).map(row).join("")}</tbody></table></div>`;
     }).join("");
+  // Every group's header row carries the same keys, so one handler serves all
+  // four tables.
+  $("body").querySelectorAll("th[data-sc]").forEach(th=>th.onclick=()=>{
+    const k=th.dataset.sc;
+    // Same column toggles direction; a new column starts descending, because the
+    // question is nearly always "who is at the top".
+    if(S.scsort===k)S.scdir=-S.scdir; else {S.scsort=k;S.scdir=k==="name"?1:-1;}
+    drawScouting();
+  });
   wireRows();
 }
 
