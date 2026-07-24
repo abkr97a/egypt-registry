@@ -781,24 +781,38 @@ function openPanel(id){
       ? `Only ${dr.mins} minute${dr.mins===1?"":"s"} played across ${dr.played} appearance${
           dr.played===1?"":"s"} — too little to rate per 90.`
       : `Across ${dr.played} appearances, ${dr.mins} minutes. Goals his side conceded with him
-         in goal — a team outcome, but the one a keeper is judged on.`}</p>`;
+         in goal — a team outcome, but the one a keeper is judged on.`}${
+      // A scoring goalkeeper is rare enough to be worth a line: 13 of 58 here
+      // have a goal or an assist, one of them four goals. Said in the note
+      // rather than given a card, because for a keeper it is a curiosity and
+      // goals against is the number he is actually judged on.
+      (st.g||st.as)?` Also ${[st.g?`${st.g} goal${st.g>1?"s":""}`:"",
+        st.as?`${st.as} assist${st.as>1?"s":""}`:""].filter(Boolean).join(" and ")} in
+        ${st.a||0} career appearances.`:""}</p>`;
   }else if(dr){
-    // An outfield defender: minutes and starts, which are his alone. "Full 90s"
-    // rather than appearances, because appearances count a ten-minute cameo the
-    // same as a match played out -- the exact distortion clean sheets carried.
-    const starts=((MSTATS[p.tm_id]||{}).form||[])
-      .filter(f=>f.part==="P"&&(f.min||0)>=60).length;
+    // Goals and assists STAY. Removing clean sheets was right; dropping these
+    // with them was not, and it cost the card its most individual numbers.
+    // 147 of 200 outfield defenders here have scored or assisted -- Omar Gaber
+    // has 23 goals and 46 assists in 528 appearances, which is the single most
+    // interesting fact about him and exactly what marks out an attacking
+    // full-back. A goal is unambiguously the player's own; a clean sheet never
+    // was.
+    //
+    // Recent minutes replace the fourth card rather than any of the three: it
+    // answers "is he playing NOW", which career totals cannot, and it is the
+    // question the defensive block was there to answer in the first place.
+    //
     // floor, not round. Extra time makes a match longer than 90 minutes:
     // Mahmoud Alaa's three appearances include two 120-minute ties, so 330
     // minutes ROUNDS to "4 full 90s from 3 appearances" -- true arithmetic that
-    // reads as a contradiction. Rounding down can never claim more matches than
-    // he played.
-    dk=kpi(dr.played,"played")+kpi(starts,"60+ min")+kpi(Math.floor(dr.mins/90),"full 90s")
-      +kpi(st.a||0,"career apps");
-    dnote=`<p class="dnote">${dr.mins} minutes across his last ${dr.played} appearance${
-      dr.played===1?"":"s"}. No individual defensive numbers are published at this level —
-      tackles and duels are absent outside the top leagues — so nothing here is a team
-      statistic wearing his name.</p>`;
+    // reads as a contradiction. Rounding down can never claim more than he
+    // played.
+    dk=kpi(st.a||0,"apps")+kpi(st.g||0,"goals")+kpi(st.as||0,"assists")
+      +kpi(Math.floor(dr.mins/90)+" / "+dr.played,"recent 90s");
+    dnote=`<p class="dnote">Career totals. Recently: ${dr.mins} minutes across ${dr.played}
+      appearance${dr.played===1?"":"s"}. Clean sheets are not shown for outfielders — they
+      belong to the whole side, and no individual defensive numbers (tackles, duels) are
+      published outside the top leagues.</p>`;
   }
 
   // Season trajectory. Bars, not a line: six seasons is too few for a line to
