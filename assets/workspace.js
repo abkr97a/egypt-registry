@@ -258,9 +258,9 @@ function blockTitle(p,x){
   if(x.g)ret.push(`${x.g} goal${x.g>1?"s":""}`);
   if(x.a)ret.push(`${x.a} assist${x.a>1?"s":""}`);
   if(ret.length)bits.push(ret.join(", "));
-  // Goals against, for the players judged on them. Only on a match he played:
-  // the score of a game watched from the bench says nothing about him.
-  if(isDefensive(p)&&f&&x.s==="P"&&(x.min||0)>0){
+  // Keepers only. On an outfielder's tooltip "clean sheet" reads as his own,
+  // and it is his whole team's.
+  if(isKeeper(p)&&f&&x.s==="P"&&(x.min||0)>0){
     const c=conceded(f);
     if(c===0)bits.push("clean sheet");
     else if(c!==null)bits.push(`${c} conceded`);
@@ -748,9 +748,24 @@ function openPanel(id){
 
   // Keepers and defenders lead with what they are judged on. "0 goals, 0
   // assists" is true of almost every goalkeeper and tells a scout nothing.
+  // CLEAN SHEETS ARE GONE for outfielders, deliberately. A clean sheet is the
+  // whole team's: Omar Gaber's five included two ten-minute cameos entered at
+  // 1-0, counted identically to a full ninety, and the two goals conceded
+  // belonged to a back four, a keeper and a midfield as much as to him. A number
+  // that good on a card is read as a verdict on the player no matter what the
+  // caption says, so the honest fix is not to show it.
+  //
+  // A keeper is different -- he is on the pitch for every goal his side concedes
+  // and stopping them is his job -- so he keeps the defensive line.
+  //
+  // Transfermarkt publishes no tackles, interceptions or duels outside the top
+  // leagues (verified: a form row carries only g, a and min), so there is no
+  // individual defensive metric to put here instead. Minutes and starts ARE his
+  // own, and they answer the question a scout actually asks about a defender:
+  // does his manager pick him.
   const dr=defRecord(p);
   let dk="", dnote="";
-  if(dr){
+  if(dr&&isKeeper(p)){
     // MINUTES, not matches, decide whether a rate is meaningful. A substitute
     // who plays one minute of a 0-1 defeat is charged with a goal he was on the
     // pitch for, and dividing by 1/90th of a match yields 90.00 per 90. Naïm
@@ -765,8 +780,25 @@ function openPanel(id){
     dnote=`<p class="dnote">${thin
       ? `Only ${dr.mins} minute${dr.mins===1?"":"s"} played across ${dr.played} appearance${
           dr.played===1?"":"s"} — too little to rate per 90.`
-      : `Across ${dr.played} appearances, ${dr.mins} minutes. Team goals conceded while he was on
-         the pitch${isKeeper(p)?"":", not an individual statistic"}.`}</p>`;
+      : `Across ${dr.played} appearances, ${dr.mins} minutes. Goals his side conceded with him
+         in goal — a team outcome, but the one a keeper is judged on.`}</p>`;
+  }else if(dr){
+    // An outfield defender: minutes and starts, which are his alone. "Full 90s"
+    // rather than appearances, because appearances count a ten-minute cameo the
+    // same as a match played out -- the exact distortion clean sheets carried.
+    const starts=((MSTATS[p.tm_id]||{}).form||[])
+      .filter(f=>f.part==="P"&&(f.min||0)>=60).length;
+    // floor, not round. Extra time makes a match longer than 90 minutes:
+    // Mahmoud Alaa's three appearances include two 120-minute ties, so 330
+    // minutes ROUNDS to "4 full 90s from 3 appearances" -- true arithmetic that
+    // reads as a contradiction. Rounding down can never claim more matches than
+    // he played.
+    dk=kpi(dr.played,"played")+kpi(starts,"60+ min")+kpi(Math.floor(dr.mins/90),"full 90s")
+      +kpi(st.a||0,"career apps");
+    dnote=`<p class="dnote">${dr.mins} minutes across his last ${dr.played} appearance${
+      dr.played===1?"":"s"}. No individual defensive numbers are published at this level —
+      tackles and duels are absent outside the top leagues — so nothing here is a team
+      statistic wearing his name.</p>`;
   }
 
   // Season trajectory. Bars, not a line: six seasons is too few for a line to
@@ -779,10 +811,9 @@ function openPanel(id){
       <div class="sparkx">${t.map(x=>`<span>${esc(String(x.s).slice(-2))}</span>`).join("")}</div>`;
   }
 
-  // For a keeper or defender the match list gains a goals-against column, and a
-  // clean sheet is marked. Only on matches he PLAYED: a 0 beside a game he
-  // watched from the bench would read as his clean sheet.
-  const showGA=!!dr;
+  // Keepers only, for the same reason the cards are. Only on matches he PLAYED:
+  // a 0 beside a game he watched from the bench would read as his clean sheet.
+  const showGA=!!dr&&isKeeper(p);
   const form=(m.form||[]).slice(0,6).map(f=>{
     const c=conceded(f), played=f.part==="P"&&(f.min||0)>0;
     const ga=!showGA?"":`<td class="r ga">${played&&c!==null
