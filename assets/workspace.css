@@ -251,7 +251,14 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;min-width:940px}
    the three widths together make the box the same 12px whatever is inside it.
    overflow:hidden so a wide glyph is clipped rather than stretching its box. */
 .strip i{width:12px;min-width:12px;max-width:12px;height:19px;border-radius:2px;
-  display:block;flex:0 0 12px;overflow:hidden;box-sizing:border-box}
+  flex:0 0 12px;overflow:hidden;box-sizing:border-box}
+/* Blocks that carry a glyph centre it with grid, not line-height: a check and a
+   star sit at different heights inside a line box, so a line-height that centred
+   the star left the check riding high. place-items:center does not care what the
+   glyph's own metrics are. Empty blocks stay display:block -- a grid container
+   with no child is the same box, but there is no reason to make it one. */
+.strip i:not(.hit):not(.cs){display:block}
+.strip i.hit,.strip i.cs{display:grid;place-items:center;line-height:1}
 .strip i.P{background:var(--up)} .strip i.B{background:var(--warn)}
 /* "Not in squad" is an absence and should read as one — but --line-2 sat so close
    to the row background that a strip of eight outs looked like empty space where
@@ -268,8 +275,9 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;min-width:940px}
    --up greyed out at a glance and the star stopped being scannable, which was
    its whole purpose. */
 /* 10px, not 11px. A 900-weight star at 11px overflows a 12px box and was being
-   clipped on both sides, which read as a narrower block. */
-.strip i.hit{font:900 10px/19px var(--sans);text-align:center;letter-spacing:0;
+   clipped on both sides, which read as a narrower block. Centred by the grid on
+   the base rule, so no line-height here. */
+.strip i.hit{font:900 10px var(--sans);letter-spacing:0;
   color:rgba(0,0,0,.62);text-shadow:0 0 1px rgba(255,255,255,.35)}
 /* Played for a different club — a reserve side, or one he has since left. Marked
    by a notch cut from the bottom corner, not by opacity: fading it made the block
@@ -282,7 +290,7 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;min-width:940px}
    corner, so a centred glyph has to ride above it or it loses a leg. Applies to
    the check as well as the star -- they are one system and must not diverge on
    an edge case. */
-.strip i.prev.hit,.strip i.prev.cs{line-height:15px}
+.strip i.prev.hit,.strip i.prev.cs{align-items:start;padding-top:2px}
 /* On amber and grey the white star has too little contrast to read. */
 /* No per-state overrides: the dark glyph reads on both green and amber, and all
    139 starred blocks are "played" anyway — you cannot score from outside the
@@ -302,7 +310,7 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;min-width:940px}
    22 blocks are BOTH a clean sheet and a goal -- a defender who scored in a 2-0.
    The star wins there, because scoring is the rarer and more individual fact;
    the tooltip still names both. */
-.strip i.cs{font:900 10px/19px var(--sans);text-align:center;letter-spacing:0;
+.strip i.cs{font:900 10px var(--sans);letter-spacing:0;
   color:rgba(0,0,0,.62);text-shadow:0 0 1px rgba(255,255,255,.35)}
 
 /* National teams — every side a player has appeared for, on his own row. The
@@ -367,7 +375,11 @@ td.sides>.sidesw{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
 .sclegend i{width:12px;height:14px;border-radius:2px;display:inline-block}
 .sclegend i.P{background:var(--up)} .sclegend i.B{background:var(--warn)}
 .sclegend i.O{background:var(--line-2)}
-.sclegend i.hit{font:900 10px/14px var(--sans);text-align:center;color:rgba(0,0,0,.62)}
+/* The legend keeps its own smaller swatch (14px, not 19px), so it needs its own
+   glyph rules -- the .strip rules never reach here. The check had a swatch but
+   no rule, so it rendered invisibly: a green block with a ✓ nobody could see. */
+.sclegend i.hit,.sclegend i.cs{display:grid;place-items:center;font:900 10px var(--sans);
+  color:rgba(0,0,0,.62)}
 .sclegend i.prev{clip-path:polygon(0 0,100% 0,100% 62%,58% 100%,0 100%)}
 .sclegend i.O{box-shadow:inset 0 0 0 1px rgba(127,140,160,.35)}
 .scgrp{margin-bottom:26px}
