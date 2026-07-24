@@ -70,13 +70,16 @@ const Auth = {
   },
 
   async signUp(email, password) {
-    // Invite-only for now. The check is here for a clear message; the database
-    // enforces it too, because a check only in the front-end is not a check.
-    const inv = await this.call(
-      `/rest/v1/invite?email=eq.${encodeURIComponent(email.toLowerCase())}&select=email`,
-      { auth: false }).catch(() => []);
-    if (!inv || !inv.length)
-      throw new Error("That email has not been invited yet.");
+    // Invite-only for now, asked through a function rather than by reading the
+    // table. The table stays unreadable — an invite list is a list of people's
+    // email addresses, and any select policy lets it be enumerated one filter at
+    // a time. is_invited() answers yes or no and returns nothing else.
+    //
+    // This is for a clear message. It is not the enforcement: a check that lives
+    // only in the front-end is not a check.
+    const ok = await this.call("/rest/v1/rpc/is_invited",
+      { method: "POST", body: { addr: email }, auth: false }).catch(() => false);
+    if (!ok) throw new Error("That email has not been invited yet.");
     const s = await this.call("/auth/v1/signup",
       { method: "POST", body: { email, password }, auth: false });
     // Supabase returns a session immediately when email confirmation is off, and
