@@ -12,7 +12,7 @@ const num=v=>{const n=parseInt(v,10);return isNaN(n)?0:n;};
 // fxsort is separate from sort: the roster and the fixtures list answer different
 // questions, and carrying one sort across both meant opening Fixtures showed them
 // alphabetically when the only useful order is who plays soonest.
-const S={view:"roster",q:"",sort:"name",dir:1,fxsort:"date",fxdir:1,sel:null,onlySaved:false,
+const S={view:"roster",q:"",sort:"name",dir:1,fxsort:"date",fxdir:1,fxview:"list",sel:null,onlySaved:false,
          f:{based:new Set(),track:new Set(),region:new Set(),club:new Set(),caps:new Set(),pos:new Set(),age:new Set(),form:new Set()}};
 // A player between clubs is available now and needs no fee — the single most
 // actionable state in the dossier, and previously only findable by searching the
@@ -825,6 +825,59 @@ function egyptFixtures(list){
     }).join("")}</tbody></table>`;
 }
 
+/* Agenda: the same fixtures grouped by DAY rather than listed.
+
+   The list sorts; the agenda shows shape. 67 fixtures fall on 18 dates, and 22
+   of them land on one weekend -- a fact a sorted list cannot show and a scout
+   planning a trip needs first. "Which weekend, and how many can I see in one
+   visit" is the question.
+
+   An agenda rather than a month grid, deliberately. 18 dates across six weeks
+   would leave a month view mostly empty cells; this stays dense when the data is
+   sparse, and gets better rather than worse as more leagues publish. */
+const DAY=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+function agendaHTML(list){
+  const byDay=new Map();
+  list.forEach(p=>{
+    const f=NEXTM[p.tm_id];
+    // Parsed, not string-keyed. "Aug 1" sorts before "Aug 11" before "Aug 2"
+    // alphabetically, which is exactly the ordering the list view suffers from.
+    const t=Date.parse(f.date||"");
+    const key=isNaN(t)?"?":new Date(t).toISOString().slice(0,10);
+    if(!byDay.has(key))byDay.set(key,{t,label:f.date,items:[]});
+    byDay.get(key).items.push({p,f});
+  });
+  const days=[...byDay.entries()].sort((a,b)=>(a[1].t||8.64e15)-(b[1].t||8.64e15));
+
+  return days.map(([key,d])=>{
+    const dt=isNaN(d.t)?null:new Date(d.t);
+    const dow=dt?DAY[dt.getUTCDay()]:"";
+    // Today and tomorrow are what a reader checks first; naming them saves
+    // working it out from a date.
+    const today=new Date(); today.setUTCHours(0,0,0,0);
+    const diff=dt?Math.round((dt-today)/86400000):null;
+    const rel=diff===0?"today":diff===1?"tomorrow":diff>1&&diff<7?`in ${diff} days`:"";
+    return `<div class="agday">
+      <div class="agdate">
+        <b>${esc(dow)}</b><span>${esc(d.label||"date unknown")}</span>
+        ${rel?`<i>${esc(rel)}</i>`:""}
+        <em>${d.items.length}</em>
+      </div>
+      <div class="agrows">${d.items.map(({p,f})=>{
+        const crest=CRESTS[f.oid]?`<img class="cc" src="${esc(CRESTS[f.oid])}" alt="" loading="lazy">`:"";
+        const g=signal(p);
+        return `<div class="agrow" data-id="${esc(p.tm_id)}">
+          <span class="agp">${esc(p.name)}<small>${esc(p.club||"")}</small></span>
+          <span class="agv">${f.ha==="H"?"vs":"at"} ${crest}${esc(f.opp||"—")}</span>
+          <span class="agt">${esc(f.time||"")}</span>
+          <span class="ags">${g?`<span class="sig ${g[0]}">${g[1]}</span>`:""}</span>
+        </div>`;
+      }).join("")}</div>
+    </div>`;
+  }).join("");
+}
+
 function drawFixtures(){
   // A free agent has no next match. The fixture stored against him belongs to
   // the club he LEFT -- Adam Tolba was listed as away at Holzheimer SG on 15 Aug
@@ -886,9 +939,18 @@ function drawFixtures(){
   }).join("");
   // Two sections, each with its own heading and count, so the split is visible
   // rather than implied by a filter the reader has to notice.
+  // One switch, two shapes of the same data: the list sorts, the agenda shows
+  // clustering. Neither replaces the other, so it is a toggle rather than a
+  // second tab.
+  const modes=`<div class="fxmode">
+      <button data-fxv="list"${S.fxview==="list"?' class="on"':""}>List</button>
+      <button data-fxv="agenda"${S.fxview==="agenda"?' class="on"':""}>Calendar</button>
+    </div>`;
   const abroadBlock=list.length
-    ? `<div class="fxgrp"><div class="ntgh"><b>Abroad</b><span>${list.length} player${list.length===1?"":"s"}</span></div>
-        <table class="grid"><thead><tr><th class="c-save"></th>${head}<th class="hide-s">Signal</th></tr></thead><tbody>${body}</tbody></table></div>`
+    ? `<div class="fxgrp"><div class="ntgh"><b>Abroad</b><span>${list.length} player${list.length===1?"":"s"}</span>${modes}</div>
+        ${S.fxview==="agenda"
+          ? agendaHTML(list)
+          : `<table class="grid"><thead><tr><th class="c-save"></th>${head}<th class="hide-s">Signal</th></tr></thead><tbody>${body}</tbody></table>`}</div>`
     : "";
   const egyBlock=egy.length
     ? `<div class="fxgrp"><div class="ntgh"><b class="eg">Egyptian league</b><span>${nEgyClubs} club${nEgyClubs===1?"":"s"} · ${egy.length} player${egy.length===1?"":"s"}</span></div>
@@ -904,6 +966,13 @@ function drawFixtures(){
   $("body").innerHTML=abroadBlock+egyBlock+pendingBlock;
   // querySelectorAll over whatever rendered: with no players abroad there is no
   // sortable header, and this simply wires nothing.
+  $("body").querySelectorAll("[data-fxv]").forEach(b=>b.onclick=()=>{
+    S.fxview=b.dataset.fxv;
+    drawFixtures();
+  });
+  // Agenda rows open the panel like table rows do; the two layouts must behave
+  // the same or switching costs the reader their muscle memory.
+  $("body").querySelectorAll(".agrow[data-id]").forEach(r=>r.onclick=()=>openPanel(r.dataset.id));
   $("body").querySelectorAll("th[data-fx]").forEach(th=>th.onclick=()=>{
     const k=th.dataset.fx;
     // Dates and text both read best ascending -- soonest first, A to Z. Form is

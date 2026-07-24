@@ -464,6 +464,42 @@ td.sides>.sidesw{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
 .fxgrp+.fxgrp{border-top:1px solid var(--line);padding-top:22px}
 .ntgh b.eg{color:var(--up)}
 
+/* Agenda. Days as headings, matches beneath — calendar-shaped without a month
+   grid's empty cells. The count per day is the point: it is what says "go this
+   weekend, not that one". */
+.fxmode{margin-left:auto;display:flex;gap:2px;background:var(--raised);
+  border:1px solid var(--line);border-radius:8px;padding:2px}
+.fxmode button{font:600 11.5px/1 var(--sans);color:var(--mut);padding:6px 11px;border-radius:6px}
+.fxmode button:hover{color:var(--ink)}
+.fxmode button.on{background:var(--red);color:#fff}
+
+.agday{margin-bottom:4px}
+.agdate{display:flex;align-items:baseline;gap:9px;padding:14px 12px 8px;
+  position:sticky;top:-14px;background:var(--bg);z-index:1}
+.agdate b{font:800 13px/1 var(--sans);text-transform:uppercase;letter-spacing:.06em}
+.agdate span{font-size:12.5px;color:var(--ink-2)}
+.agdate i{font-style:normal;font:700 10px/1 var(--sans);text-transform:uppercase;
+  letter-spacing:.07em;color:var(--red);background:color-mix(in srgb,var(--red) 12%,transparent);
+  padding:4px 7px;border-radius:5px}
+/* The number that answers "how many can I see in one trip". */
+.agdate em{margin-left:auto;font-style:normal;font:700 11px/1 var(--mono);color:var(--mut);
+  background:var(--raised);padding:5px 8px;border-radius:5px;font-variant-numeric:tabular-nums}
+
+.agrow{display:grid;grid-template-columns:1fr 1fr 66px 108px;gap:12px;align-items:center;
+  padding:9px 12px;border-bottom:1px solid var(--line);cursor:pointer}
+.agrow:hover{background:rgba(210,30,60,.07)}
+.agp{font-weight:700;font-size:13.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.agp small{display:block;font-weight:400;font-size:11.5px;color:var(--mut);
+  overflow:hidden;text-overflow:ellipsis}
+.agv{font-size:13px;color:var(--ink-2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.agt{font:600 12px/1 var(--mono);color:var(--mut);font-variant-numeric:tabular-nums}
+@media(max-width:860px){
+  /* Kick-off time and signal are the first things to go on a phone; who plays
+     whom is the row's reason for existing. */
+  .agrow{grid-template-columns:1fr 1fr}
+  .agt,.ags{display:none}
+}
+
 /* Notes. The only data here a person creates, and the only data that cannot be
    rebuilt by running the crawler again — so the writing box comes first and the
    controls stay plain. */
