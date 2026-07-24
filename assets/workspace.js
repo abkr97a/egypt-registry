@@ -299,10 +299,29 @@ function conceded(f){
   const n=parseInt(sc.split("-")[1],10);
   return isNaN(n)?null:n;
 }
-function defRecord(p){
+// `n` is the number of MATCHES the window covers, counted the way the strip
+// counts them -- squad[] rows, played or not -- so the numbers describe exactly
+// the run of games drawn beside them.
+//
+// It used to read all of form[] regardless. form[] holds 14 rows and the
+// Scouting strip draws 10, so Mohamed El Shenawy's row said "1 played" from the
+// last ten and "1 CS · 3 GA" from the last fourteen: three matches of a
+// goalkeeper's record attributed to a window that contained one. In the last ten
+// he played once and lost 1-2 -- no clean sheet, two conceded. Two windows in
+// one row, and nothing on screen said which was which.
+function defRecord(p,n){
   if(!isDefensive(p))return null;
-  const rows=((MSTATS[p.tm_id]||{}).form||[])
-    .filter(f=>f.part==="P"&&(f.min||0)>0&&conceded(f)!==null);
+  const m=MSTATS[p.tm_id]||{};
+  let form=m.form||[];
+  if(n){
+    // squad[] and form[] are both newest-first and keyed by the same dates, so
+    // the window is the first n squad dates rather than the first n form rows --
+    // form[] omits nothing here, but keying on dates cannot drift if it ever
+    // does.
+    const win=new Set((m.squad||[]).slice(0,n).map(x=>x.d));
+    form=form.filter(f=>win.has(f.fd));
+  }
+  const rows=form.filter(f=>f.part==="P"&&(f.min||0)>0&&conceded(f)!==null);
   if(!rows.length)return null;
   const mins=rows.reduce((s,f)=>s+(f.min||0),0);
   const ga=rows.reduce((s,f)=>s+conceded(f),0);
@@ -1374,7 +1393,7 @@ function drawScouting(){
     // matches the strip to its left draws, so the number and the run of games it
     // comes from are read together. Empty for anyone who is not a keeper or a
     // defender -- an outfield attacker has no goals-against to report.
-    const dr2=defRecord(p);
+    const dr2=defRecord(p,10);   // same ten matches the strip draws
     const def=!dr2?"—"
       :dr2.mins>=270
         ? `<b>${dr2.per90.toFixed(2)}</b><small class="cn">${dr2.cs} CS · ${dr2.ga} GA</small>`
