@@ -394,16 +394,21 @@ function stripHTML(p,n){
     // was somewhere else is the wrong conclusion. Marked, not hidden.
     const f=matchOf(p,x);
     const elsewhere=f&&f.side&&f.side!==p.club;
-    // A clean sheet, for the players judged on them. A RING, not the star: the
-    // star already means "scored or assisted", and Ahmed El Shenawy has two
-    // career assists, so one symbol for both would be ambiguous on exactly the
-    // players this is for. A goal is something he did; a clean sheet is a match
-    // that stayed goalless, so an outline round the block rather than a mark
-    // inside it is the truer shape.
+    // A clean sheet, for the players judged on them. A CHECK inside the block,
+    // exactly as a goal puts a star inside it -- same 12px block, same centred
+    // glyph, so the two read as one system rather than as a mark and a border.
+    // A ring drawn round the edge was a second visual language for the same kind
+    // of fact.
+    //
+    // Distinct glyph, not the same star: the star means "scored or assisted",
+    // and Ahmed El Shenawy is a goalkeeper with two career assists, so one
+    // symbol for both would be ambiguous on exactly the players this is for. 22
+    // blocks in the data are both.
     //
     // Played matches only: a 0-0 watched from the bench is not his clean sheet.
     const cs=isDefensive(p)&&x.s==="P"&&(x.min||0)>0&&f&&conceded(f)===0;
-    return `<i class="${x.s}${hit?" hit":""}${cs?" cs":""}${elsewhere?" prev":""}" title="${esc(blockTitle(p,x))}">${hit?"★":""}</i>`;
+    const mark=hit?"★":cs?"✓":"";
+    return `<i class="${x.s}${hit?" hit":""}${cs?" cs":""}${elsewhere?" prev":""}" title="${esc(blockTitle(p,x))}">${mark}</i>`;
   }).join("")}</span>`;
 }
 
@@ -1511,7 +1516,7 @@ function drawScouting(){
       <span><i class="P"></i>played</span><span><i class="B"></i>benched</span>
       <span><i class="O"></i>not in squad</span>
       <span><i class="P hit">★</i>scored or assisted</span>
-      <span><i class="P cs"></i>clean sheet (GK &amp; defenders)</span>
+      <span><i class="P cs">✓</i>clean sheet (GK &amp; defenders)</span>
       <span><i class="P prev"></i>another club</span>
       <span>oldest → newest · hover a block for the match, score and minutes</span></div>`
     +SCGRP.map(([k,label])=>{
