@@ -455,6 +455,15 @@ td.sides>.sidesw{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
 .kpi span{display:block;font:600 8.5px/1 var(--sans);letter-spacing:.12em;
   text-transform:uppercase;color:var(--mut);margin-top:5px}
 
+/* Fixtures, split into Abroad and Egyptian league. Each section carries its own
+   heading and count so the split reads as structure rather than as a filter the
+   viewer has to infer. */
+.fxgrp{margin-bottom:30px}
+.fxgrp>.ntgh{padding-left:12px}
+.fxgrp>.ntnote{padding-left:12px}
+.fxgrp+.fxgrp{border-top:1px solid var(--line);padding-top:22px}
+.ntgh b.eg{color:var(--up)}
+
 /* Notes. The only data here a person creates, and the only data that cannot be
    rebuilt by running the crawler again — so the writing box comes first and the
    controls stay plain. */

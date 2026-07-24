@@ -785,15 +785,65 @@ const FXKEY={
   opp: p=>((NEXTM[p.tm_id]||{}).opp||"").toLowerCase(),
   form:p=>{const s=status(p);return s?s.played*10-s.out:-99;},
 };
+/* Fixtures, split by where a player is based, because the two populations pose
+   different questions.
+
+   ABROAD is per PLAYER. They are scattered across dozens of leagues, one or two
+   to a club, and the question is "where is this individual playing next".
+
+   IN EGYPT is per CLUB. 552 players sit in twenty squads, so a per-player list
+   would repeat the same Zamalek fixture thirty-two times and bury everything
+   else. One row per club, with the squad size beside it, answers "who plays
+   this weekend" in twenty lines instead of five hundred. */
+function egyptFixtures(list){
+  const byClub=new Map();
+  list.forEach(p=>{
+    const k=p.club||"—";
+    if(!byClub.has(k))byClub.set(k,{club:k,fx:NEXTM[p.tm_id],players:[],club_id:p.club_id});
+    byClub.get(k).players.push(p);
+  });
+  const clubs=[...byClub.values()].sort((a,b)=>{
+    const d=Date.parse(a.fx.date||"")-Date.parse(b.fx.date||"");
+    return isNaN(d)?b.players.length-a.players.length:d;
+  });
+  return `<table class="grid"><thead><tr>
+      <th>Club</th><th class="hide-s">Kick-off</th><th>Opponent</th>
+      <th class="r">Squad</th></tr></thead><tbody>
+    ${clubs.map(c=>{
+      const crest=CRESTS[c.club_id]?`<img class="cc" src="${esc(CRESTS[c.club_id])}" alt="" loading="lazy">`:"";
+      const ocrest=CRESTS[c.fx.oid]?`<img class="cc" src="${esc(CRESTS[c.fx.oid])}" alt="" loading="lazy">`:"";
+      // Named, so a scout can see WHO without opening anything. Capped at six:
+      // beyond that the row stops being scannable, which is the whole reason
+      // this view groups.
+      const names=c.players.slice(0,6).map(p=>esc(p.name)).join(", ")
+        +(c.players.length>6?` +${c.players.length-6} more`:"");
+      return `<tr>
+        <td><b>${crest}${esc(c.club)}</b><small class="cn">${esc(names)}</small></td>
+        <td class="hide-s"><b>${esc(c.fx.date||"—")}</b><small class="cn">${esc(c.fx.time||"")}</small></td>
+        <td>${c.fx.ha==="H"?'<span class="tag">Home</span>':'<span class="tag">Away</span>'} ${ocrest}${esc(c.fx.opp||"—")}</td>
+        <td class="r num">${c.players.length}</td></tr>`;
+    }).join("")}</tbody></table>`;
+}
+
 function drawFixtures(){
   // A free agent has no next match. The fixture stored against him belongs to
   // the club he LEFT -- Adam Tolba was listed as away at Holzheimer SG on 15 Aug
   // while being a free agent, which is his old side's fixture and tells a scout
   // nothing about him. isFree, not club_id 515, because the placeholder is only
   // one of the ways TM renders clublessness.
-  let list=rows().filter(p=>NEXTM[p.tm_id]&&!isFree(p));
-  $("count").innerHTML=`${list.length}<small>with a fixture</small>`;
-  if(!list.length){
+  const all=rows().filter(p=>NEXTM[p.tm_id]&&!isFree(p));
+  const egy=all.filter(p=>basedOf(p)==="egypt");
+  let list=all.filter(p=>basedOf(p)==="abroad");
+  const nEgyClubs=new Set(egy.map(p=>p.club)).size;
+  $("count").innerHTML=`${all.length}<small>with a fixture</small>`;
+
+  // Egyptian clubs whose players are here but whose schedule TM has not published.
+  // Said explicitly: an absent section reads as "nobody plays", when the truth is
+  // "the league has not released its dates".
+  const egyPending=[...new Set(rows().filter(p=>basedOf(p)==="egypt"&&!isFree(p)&&!NEXTM[p.tm_id])
+                                      .map(p=>p.club))].filter(Boolean);
+
+  if(!all.length&&!egyPending.length){
     $("body").innerHTML=`<div class="empty"><b>No upcoming fixtures</b>Leagues publish 26/27 dates at different times, so this fills in through pre-season.${savedNote()}</div>`;
     return;
   }
@@ -834,7 +884,26 @@ function drawFixtures(){
     const on=S.fxsort===k;
     return `<th class="${cls}${on?" sorted":""}" data-fx="${k}">${esc(label)}<span class="ar">${on?(S.fxdir>0?"▲":"▼"):"▲"}</span></th>`;
   }).join("");
-  $("body").innerHTML=`<table class="grid"><thead><tr><th class="c-save"></th>${head}<th class="hide-s">Signal</th></tr></thead><tbody>${body}</tbody></table>`;
+  // Two sections, each with its own heading and count, so the split is visible
+  // rather than implied by a filter the reader has to notice.
+  const abroadBlock=list.length
+    ? `<div class="fxgrp"><div class="ntgh"><b>Abroad</b><span>${list.length} player${list.length===1?"":"s"}</span></div>
+        <table class="grid"><thead><tr><th class="c-save"></th>${head}<th class="hide-s">Signal</th></tr></thead><tbody>${body}</tbody></table></div>`
+    : "";
+  const egyBlock=egy.length
+    ? `<div class="fxgrp"><div class="ntgh"><b class="eg">Egyptian league</b><span>${nEgyClubs} club${nEgyClubs===1?"":"s"} · ${egy.length} player${egy.length===1?"":"s"}</span></div>
+        <p class="ntnote">Grouped by club: one fixture covers the whole squad, so a per-player list would repeat it.</p>
+        ${egyptFixtures(egy)}</div>`
+    : "";
+  // Not an omission — a source gap, and it says so. TM has not published the
+  // Egyptian league schedule for this season.
+  const pendingBlock=egyPending.length
+    ? `<div class="fxgrp"><div class="ntgh"><b>Egyptian league — no dates yet</b><span>${egyPending.length} club${egyPending.length===1?"":"s"}</span></div>
+        <p class="ntnote">Transfermarkt has not published this season's Egyptian fixtures. Their players are in the database; only the schedule is missing: ${egyPending.map(esc).join(", ")}.</p></div>`
+    : "";
+  $("body").innerHTML=abroadBlock+egyBlock+pendingBlock;
+  // querySelectorAll over whatever rendered: with no players abroad there is no
+  // sortable header, and this simply wires nothing.
   $("body").querySelectorAll("th[data-fx]").forEach(th=>th.onclick=()=>{
     const k=th.dataset.fx;
     // Dates and text both read best ascending -- soonest first, A to Z. Form is
