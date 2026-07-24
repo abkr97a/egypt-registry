@@ -916,7 +916,7 @@ function agendaHTML(list){
         const t=koTime(f);
         return `<div class="agrow" data-id="${esc(p.tm_id)}">
           <span class="agp">${face}<span class="agnm">${esc(p.name)}<small>${esc(p.club||"")}</small></span></span>
-          <span class="agv">${f.ha==="H"?"vs":"at"} ${crest}${esc(f.opp||"—")}</span>
+          <span class="agv">${f.ha==="H"?"vs":f.ha==="A"?"at":""} ${crest}${esc(f.opp||"—")}</span>
           <span class="agt"${f.utc?"":' title="time as published, zone unconfirmed"'}>${t}${f.utc?"":"*"}</span>
           <span class="ags">${venue}</span>
         </div>`;
@@ -972,13 +972,13 @@ function drawFixtures(){
         :`<span class="face ini">${esc(initials(p.name))}</span>`}<span class="nm"><b>${esc(p.name)}</b>
         <span>${ownc}${esc(p.club||"")}${p.plays_in?` · ${esc(p.plays_in)}`:""}</span></span></span></td>
       <td class="hide-s"><b>${esc(f.date||"—")}</b><small class="cn">${koTime(f)}</small></td>
-      <td>${f.ha==="H"?'<span class="tag">Home</span>':'<span class="tag">Away</span>'} ${crest}${esc(f.opp||"—")}</td>
+      <td>${f.ha==="H"?'<span class="tag">Home</span>':f.ha==="A"?'<span class="tag">Away</span>':""} ${crest}${esc(f.opp||"—")}</td>
       <td class="hide-s">${strip}</td>
       <td class="hide-s">${g?`<span class="sig ${g[0]}">${g[1]}</span>`:`<span class="nostrip">—</span>`}</td></tr>`;
   }).join("");
   // No Club column: the player cell already carries it as a subtitle, and a
   // second copy would cost a column on a view whose job is dates.
-  const FXCOLS=[["name","Player",""],["date","Kick-off","hide-s"],["opp","Opponent",""],
+  const FXCOLS=[["name","Player",""],["date","Kick-off (Cairo)","hide-s"],["opp","Opponent",""],
                 ["form","Last 6","hide-s"]];
   const head=FXCOLS.map(([k,label,cls])=>{
     const on=S.fxsort===k;
@@ -993,9 +993,11 @@ function drawFixtures(){
       <button data-fxv="list"${S.fxview==="list"?' class="on"':""}>List</button>
       <button data-fxv="agenda"${S.fxview==="agenda"?' class="on"':""}>Calendar</button>
     </div>`;
-  // An unlabelled clock is what made the timezone bug survive: "9:00 AM" looked
-  // like data. Naming the zone means a wrong time can be recognised as wrong.
-  const tzn=`<span class="tzn">times in Cairo</span>`;
+  // Only in the calendar. The list has a "Kick-off" column header the note can
+  // live in, so a separate banner was saying the same thing twice; the calendar
+  // has no column headers at all, and an unlabelled clock is what let the
+  // six-hour timezone error survive in the first place.
+  const tzn=S.fxview==="agenda"?`<span class="tzn">times in Cairo</span>`:"";
   const abroadBlock=list.length
     ? `<div class="fxgrp"><div class="ntgh"><b>Abroad</b><span>${list.length} player${list.length===1?"":"s"}</span>${tzn}${modes}</div>
         ${S.fxview==="agenda"
