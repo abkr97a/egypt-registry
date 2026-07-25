@@ -1,0 +1,11 @@
+# Egyptian Players — scouting platform
+# The site itself is meant to be found and indexed. The raw data files behind it
+# are not: they are a compiled dataset, and a crawler indexing /data/*.json would
+# republish the whole thing outside the page it was built for. Well-behaved bots
+# honour this; it is a request and an assertion of intent, not an access control.
+
+User-agent: *
+Allow: /
+Disallow: /data/
+
+Sitemap: https://abkr97a.github.io/egypt-registry/
