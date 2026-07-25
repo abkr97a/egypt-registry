@@ -63,12 +63,14 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .brand{padding:16px 16px 15px;border-bottom:1px solid var(--line);position:relative}
 .brandlink{display:flex;align-items:center;gap:11px;text-decoration:none;color:inherit}
 /* The flag mark: a small rounded chip with a hairline frame and a soft shadow so
-   it reads as a badge, not a floating rectangle. The SVG carries its own colours,
-   so no gold fill here -- the flag IS the colour. */
-.bmark{flex:none;display:grid;place-items:center;line-height:0;
-  border-radius:5px;overflow:hidden;box-shadow:0 0 0 1px var(--line),0 1px 3px rgba(0,0,0,.25)}
-.bmark svg{display:block}
-.brandlink:hover .bmark{border-color:color-mix(in srgb,var(--gold) 55%,transparent)}
+   The mark is the Egyptian FA crest -- a full logo on a transparent ground, so
+   no frame or fill behind it; a chip border would box in a badge that is already
+   its own shape. Just the crest, sized to the header, with a hair of lift on
+   hover to read as a link. */
+.bmark{flex:none;display:block;width:34px;height:34px;object-fit:contain;
+  transition:transform .12s ease,filter .12s ease}
+.brandlink:hover .bmark{transform:translateY(-1px);
+  filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))}
 .btext{min-width:0}
 .btext b{display:block;font:800 15px/1.1 var(--sans);letter-spacing:-.02em}
 .btext>span{display:block;font:700 8.5px/1 var(--sans);letter-spacing:.19em;
