@@ -2195,7 +2195,9 @@ function drawAccount(){
     // Was a straight sign-out confirm, which made the only thing you could do
     // with your account be to leave it. Now it opens the account panel, where
     // signing out is one option among changing your name and password.
-    b.innerHTML=`<span class="acctdot">${esc(Auth.initials)}</span>${esc(Auth.displayName)}`;
+    // Name wrapped so a narrow header can drop it to just the monogram, reclaiming
+    // the width the tab strip and the saved/count controls need.
+    b.innerHTML=`<span class="acctdot">${esc(Auth.initials)}</span><span class="acctname">${esc(Auth.displayName)}</span>`;
     b.title=`Signed in as ${Auth.email}`;
     b.onclick=()=>AuthUI.open("account",()=>{drawAccount();draw();});
   } else {

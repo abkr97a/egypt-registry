@@ -80,8 +80,13 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 /* Views live in the header as tabs. Underline rather than a filled pill: the
    sidebar's filled-red state was the heaviest thing on screen, and a view is
    context, not an alert. The active tab should read as "you are here", quietly. */
-.nav{display:flex;align-items:stretch;gap:2px;height:100%;min-width:0;overflow-x:auto;
-  scrollbar-width:none}
+/* flex:1 so the tab strip is the element that YIELDS space: as the header fills
+   up it shrinks and scrolls its own overflow, instead of staying full width and
+   shoving the count/search/account into each other. This is what fixes the
+   overlap — before, nothing told the nav to give way, so it pushed its
+   neighbours off their own footprint. */
+.nav{display:flex;align-items:stretch;gap:2px;height:100%;flex:1 1 auto;min-width:0;
+  overflow-x:auto;scrollbar-width:none}
 .nav::-webkit-scrollbar{display:none}
 /* The underline sits on the header's own bottom border, so -1px pulls it over
    that line rather than leaving a hairline gap. Without align-items:stretch on
@@ -125,10 +130,12 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 /* The count follows the tabs and is pushed right, so it reads as a result of the
    view rather than as a heading over it. min-width:0 lets the tab strip scroll
    instead of forcing the header wider than the viewport. */
-.count{font:800 15px/1 var(--sans);white-space:nowrap;font-variant-numeric:tabular-nums;
-  margin-left:auto;flex:none}
+/* No margin-left:auto any more — .nav now grows to fill the gap, so the count and
+   everything after it are simply pushed to the right by it. flex:none keeps each
+   from being squeezed. */
+.count{font:800 15px/1 var(--sans);white-space:nowrap;font-variant-numeric:tabular-nums;flex:none}
 .count small{font-weight:500;color:var(--mut);font-size:12px;margin-left:6px}
-.search{position:relative;flex:0 1 260px;min-width:150px}
+.search{position:relative;flex:0 1 240px;min-width:150px}
 .search input{width:100%;padding:8px 12px 8px 32px;border-radius:8px;
   border:1px solid var(--line-2);background:var(--bg);color:var(--ink);font-size:13px;outline:none;
   direction:ltr;text-align:left}
@@ -137,8 +144,14 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   width:9px;height:9px;border:1.5px solid var(--mut);border-radius:50%;pointer-events:none}
 .search::after{content:"";position:absolute;left:19px;top:50%;margin-top:3px;width:5px;height:1.5px;
   background:var(--mut);transform:rotate(45deg);transform-origin:left center;pointer-events:none}
-.tgl{padding:7px 9px;border:1px solid var(--line-2);border-radius:8px;color:var(--ink-2);font-size:13px}
+.tgl{flex:none;display:inline-flex;align-items:center;padding:7px 9px;
+  border:1px solid var(--line-2);border-radius:8px;color:var(--ink-2);font-size:13px;
+  white-space:nowrap;max-width:180px}
 .tgl:hover{border-color:var(--red);color:var(--red)}
+/* The signed-in name, kept out of the way when the header is tight. Truncates
+   before it can ever push a neighbour, then drops entirely at the narrow
+   breakpoint, leaving just the monogram. */
+.acctname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px}
 
 /* Padding on the top and sides only. The table's own cells carry 12px, so the
    left edge of a row already lines up with a heading given the same 12px here —
@@ -803,6 +816,39 @@ td.sides>.sidesw{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
 
 /* ---------- responsive ---------- */
 .menu{display:none}
+/* The header holds a lot now — menu, six tabs, saved-only, a running count, the
+   search, the account and the theme toggle. The six tabs are the spine and must
+   stay fully readable; everything optional sheds FIRST, so the tab strip never
+   has to truncate a label or hide a tab. Order of shedding, widest trigger first:
+   1500 → drop the running count (the active tab already shows its own number, so
+          a separate "5 teams" beside it was pure duplication and the first to go);
+   1360 → drop the account NAME to just its monogram;
+   1180 → tighten gaps and shrink the search;
+   below 860 the phone rules take over (sidebar collapses, tabs scroll). */
+@media (max-width:1560px){
+  /* First things to shed, together: the running count (duplicated by the active
+     tab's own badge) and the account NAME (its monogram still identifies who is
+     signed in). These two free the most width for the least loss, and doing them
+     at the top of the range keeps the six tab labels whole across the whole
+     common laptop span rather than clipping "Build XI" in a dead zone. */
+  .count{display:none}
+  .acctname{display:none}
+  .acctdot{margin-right:0}
+  .tgl{max-width:none}
+  /* Tighten the tab strip in the same step so the labels never truncate. */
+  .top{gap:10px;padding:0 14px}
+  .nav{gap:0}
+  .nav button{padding:0 10px}
+  .search{flex:0 1 200px}
+}
+@media (max-width:1220px){
+  /* Drop the per-tab count badges (the label alone identifies the view) — the
+     single biggest saving, and it keeps all six labels whole well down the range.
+     Search shrinks with the strip rather than holding a fixed footprint. */
+  .nav button .n{display:none}
+  .nav button{padding:0 9px;font-size:12.5px}
+  .search{flex:0 1 150px;min-width:120px}
+}
 @media (max-width:860px){
   .app{grid-template-columns:1fr}
   .side{position:fixed;top:0;bottom:0;left:0;width:var(--side);z-index:50;
