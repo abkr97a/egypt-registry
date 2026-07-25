@@ -367,6 +367,13 @@ const AuthUI = {
           ? "That email already has an account — sign in instead."
           : /weak|password/i.test(raw) && /6|short/i.test(raw)
           ? "Password must be at least 6 characters."
+          // Supabase's shared free-tier mailer caps confirmation emails per hour.
+          // It is a server-side limit the reader cannot fix, so say so plainly and
+          // point them at signing in rather than leaving them stuck retrying.
+          : /rate limit/i.test(raw)
+          ? "Too many sign-ups right now — please try again in a little while."
+          : /email address.*invalid|invalid.*email/i.test(raw)
+          ? "That email address doesn't look valid — check the spelling."
           : raw || "Something went wrong. Try again.";
         err.hidden = false;
         go.disabled = false; go.textContent = label;
