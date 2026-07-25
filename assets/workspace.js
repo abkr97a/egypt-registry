@@ -1625,26 +1625,43 @@ function egyptLastResults(list){
   });
   const games=[...byGame.values()].sort((a,b)=>
     (Date.parse(b.f.fd||"")||0)-(Date.parse(a.f.fd||"")||0));
-  return `<table class="grid"><thead><tr>
-      <th>Club</th><th class="hide-s">Date</th><th>Opponent</th>
+  return `<table class="grid fxlast"><thead><tr>
+      <th class="c-x"></th><th>Club</th><th class="hide-s">Date</th><th>Opponent</th>
       <th class="r">Result</th><th class="r hide-s">Featured</th></tr></thead><tbody>
-    ${games.map(g=>{
+    ${games.map((g,i)=>{
       const f=g.f;
       const crest=CRESTS[g.club_id]?`<img class="cc" src="${esc(CRESTS[g.club_id])}" alt="" loading="lazy">`:"";
       const oc=CRESTS[f.oid]?`<img class="cc" src="${esc(CRESTS[f.oid])}" alt="" loading="lazy">`:"";
       const res=f.r==="W"?"W":f.r==="L"?"L":"D";
-      // Scorers named, because "who scored in the win" is the fact a scout most
-      // wants off this row. Capped so it stays scannable.
       const scorers=g.players.filter(p=>{const m=lastMatch(p);return m.g||m.a;})
         .map(p=>{const m=lastMatch(p);return `${esc(p.name)}${m.g?` ${m.g}G`:""}${m.a?` ${m.a}A`:""}`;});
       const names=(scorers.length?scorers:g.players.slice(0,6).map(p=>esc(p.name)))
         .slice(0,6).join(", ")+(g.players.length>6&&!scorers.length?` +${g.players.length-6} more`:"");
-      return `<tr>
+
+      // The squad sub-row: which of the players we track featured, ordered by
+      // minutes so the men who actually played the game come first. Minutes
+      // rather than a starter flag, because the feed gives minutes. It is NOT
+      // the full eleven -- only the players in this database -- so the heading
+      // says "tracked players" rather than implying a team sheet.
+      const sq=g.players.slice()
+        .map(p=>({p,m:lastMatch(p)}))
+        .sort((a,b)=>(b.m.min||0)-(a.m.min||0));
+      const cells=sq.map(({p,m})=>`<button class="sqp" data-id="${esc(p.tm_id)}">
+          <b>${esc(p.name)}</b>
+          <span>${esc(p.position||"")} · ${m.min?m.min+"'":"—"}${
+            m.g?` · <i class="sg">${m.g}G</i>`:""}${m.a?` · <i class="sg">${m.a}A</i>`:""}</span>
+        </button>`).join("");
+
+      return `<tr class="fxrow" data-game="${i}">
+        <td class="c-x"><span class="xtoggle">▸</span></td>
         <td><b>${crest}${esc(g.club)}</b><small class="cn">${scorers.length?"⚽ ":""}${esc(names)}</small></td>
         <td class="hide-s"><b>${esc(f.fd||"—")}</b><small class="cn">${esc(f.cn||"")}</small></td>
         <td>${f.v==="home"?'<span class="tag">Home</span>':f.v==="away"?'<span class="tag">Away</span>':""} ${oc}${esc(f.opp||"—")}</td>
         <td class="r"><span class="res ${res}">${esc(f.sc||"")}</span></td>
-        <td class="r num">${g.players.length}</td></tr>`;
+        <td class="r num">${g.players.length}</td></tr>
+      <tr class="fxsquad" data-squad="${i}" hidden><td></td><td colspan="5">
+        <div class="sqh">Tracked players who featured — ${g.players.length} in this database, not the full team</div>
+        <div class="sqgrid">${cells}</div></td></tr>`;
     }).join("")}</tbody></table>`;
 }
 
@@ -1687,6 +1704,23 @@ function drawLastResults(){
 
   $("body").innerHTML=fxTabs(nNext,all.length)+abroadBlock+egyBlock;
   $("body").querySelectorAll("[data-fxt]").forEach(b=>b.onclick=()=>{S.fxtab=b.dataset.fxt;drawFixtures();});
+
+  // Click a club match to reveal its squad. The detail row is drawn hidden
+  // beside every match, so opening one is a class toggle rather than a redraw --
+  // the list keeps its scroll position, which a redraw would lose.
+  $("body").querySelectorAll("tr.fxrow").forEach(r=>r.onclick=()=>{
+    const sq=$("body").querySelector(`tr.fxsquad[data-squad="${r.dataset.game}"]`);
+    if(!sq)return;
+    const open=sq.hidden;
+    sq.hidden=!open;
+    r.classList.toggle("open",open);
+  });
+  // A player button inside the squad opens that player's panel. stopPropagation
+  // so it does not also toggle the row it sits in.
+  $("body").querySelectorAll(".sqp").forEach(b=>b.onclick=e=>{
+    e.stopPropagation();
+    openPanel(b.dataset.id);
+  });
   wireRows();
 }
 
