@@ -580,6 +580,12 @@ td.sides>.sidesw{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
 .fxsquad[hidden]{display:none}
 .sqh{font:600 10.5px/1 var(--sans);letter-spacing:.06em;text-transform:uppercase;
   color:var(--mut);padding:12px 14px 8px}
+/* Two line-ups under one match -- home team, then away -- each its own labelled
+   block, so a scout reads "who from this side played" for both without the two
+   squads blurring together. */
+.sqside+.sqside{border-top:1px solid var(--line)}
+/* v between the two club names in the match cell. */
+.vs{color:var(--mut);font-weight:400;margin:0 3px}
 /* A responsive grid of player chips: as many columns as fit, each a button that
    opens the player. Minutes-ordered in the markup, so the starters read first. */
 .sqgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));

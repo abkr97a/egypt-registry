@@ -2,7 +2,7 @@
    Table-first, filters persistent, detail in a side panel so a scout working
    through 152 players never loses their place in the list. */
 
-let DATA=[],MSTATS={},CRESTS={},NEXTM={},NATIDS={};
+let DATA=[],MSTATS={},CRESTS={},NEXTM={},NATIDS={},EGY1=new Set();
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const initials=n=>(n||"?").split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase();
@@ -1616,98 +1616,126 @@ function lastRow(p){
    the row. Keyed on club + date + opponent so a squad that played two matches in
    the window shows both, not one merged row. */
 function egyptLastResults(list){
-  // ONE row per club: its most recent match. "Last match" is per-player -- the
-  // last game each man featured in -- so a squad where several players have not
-  // started in weeks produced a separate row for each of their different last
-  // games, and Zed FC showed ten "matches" for what should be one round. A club
-  // plays one last match; a player who did not feature in it did not feature,
-  // he does not spawn a fixture of his own.
+  // ONE ROW PER MATCH, restricted to the current Egyptian Premier League.
   //
-  // So: group by club, take the newest match date any of its players has, and
-  // that IS the club's last game. The featured squad is exactly the players
-  // whose own last match falls on that date -- the rest simply were not in it.
-  // Grouped by the club the player played the match FOR (f.side), not his
-  // current club. 216 players' last game was for a different side than they are
-  // at now -- a transfer since -- and grouping by current club filed those under
-  // the wrong team: Abdelrahman Emad's last match was for Zed FC, but he is at
-  // Ghazl El Mahalla now, so under the old grouping his Zed game appeared as a
-  // Ghazl fixture. The match belongs to the club that played it.
-  const byClub=new Map();
+  // Two problems this fixes, both reported:
+  //  1. Zamalek vs Cleopatra appeared as TWO rows -- once from each side --
+  //     because the previous version grouped by the club a player featured for.
+  //     A match is one game; it is now one row, keyed on the pair of clubs and
+  //     the date, so both teams' tracked players sit under a single result.
+  //  2. Foreign youth sides, reserve teams and lower divisions (FC Rostov,
+  //     Proxy FC, Dayrout, Liverpool U21) appeared as "clubs", because a
+  //     diaspora player's last game was often for one of them. Only matches
+  //     where at least one side is an EGY1 club (by verein id) are kept.
+  //
+  // Keyed by verein ids, not names: a club renders under several name spellings
+  // across the data, and an id is stable.
+  const EGY1_ON=EGY1.size>0;
+  const byMatch=new Map();
   list.forEach(p=>{
     const m=lastMatch(p);
-    const k=m.side||p.club||"—";
-    if(!byClub.has(k))byClub.set(k,{club:k,club_id:m.sid,players:[]});
-    byClub.get(k).players.push(p);
+    const sid=String(m.sid||""), oid=String(m.oid||"");
+    // Keep only matches the player played FOR an EGY1 club. Requiring the
+    // player's own side (sid) to be top-flight -- not merely one of the two
+    // teams -- is what drops the foreign youth and lower-division games: a
+    // diaspora player whose last match was for Proxy FC against an EGY1 side
+    // would otherwise pull Proxy in as the row's club.
+    if(EGY1_ON && !EGY1.has(sid))return;
+    // Match key: the two clubs (order-independent) plus the date, so the same
+    // fixture from either team's feed lands in one bucket.
+    const pair=[sid,oid].sort().join("-");
+    const k=`${pair}|${m.fd}`;
+    if(!byMatch.has(k)){
+      // Anchor the row on the EGY1 side. If both are EGY1 (a league match), the
+      // player's own side is the anchor; the opponent is the other team.
+      byMatch.set(k,{f:m,side_id:sid,opp_id:oid,players:[]});
+    }
+    byMatch.get(k).players.push({p,m});
   });
-  const games=[...byClub.values()].map(c=>{
-    // The club's last match is the game the MOST of its players share, not the
-    // one with the newest date. A single player's later appearance -- a cameo,
-    // or a game for a since-left club -- was hijacking the whole row: El
-    // Mokawloon's real last match had eight players on 29 May, but one man's
-    // 8 Jun sub appearance made the row read "0-2 vs Wadi Degla, 1 player".
-    //
-    // Grouped by the actual game (date + opponent), the winner is the group with
-    // the most players; date breaks a tie. That is the fixture the squad played,
-    // which is what "the club's last match" means.
-    const g=new Map();
-    for(const p of c.players){const m=lastMatch(p);const k=`${m.fd}|${m.opp}`;
-      if(!g.has(k))g.set(k,{f:m,players:[]});
-      g.get(k).players.push(p);}
-    const best=[...g.values()].sort((a,b)=>
-      (b.players.length-a.players.length)
-      ||((Date.parse(b.f.fd||"")||0)-(Date.parse(a.f.fd||"")||0)))[0];
-    return {club:c.club,club_id:c.club_id,f:best.f,players:best.players,
-            t:Date.parse(best.f.fd||"")||0};
-  }).sort((a,b)=>b.t-a.t);
+
+  // For each match, pick the anchor club (an EGY1 side) and split players by
+  // which team they played for, so the squad panel can show both line-ups.
+  const games=[...byMatch.values()].map(g=>{
+    // The row's club is the EGY1 side of the fixture; prefer sid, fall back to
+    // oid if only the opponent is EGY1 (an EGY1 club as someone's opponent).
+    const anchor=(!EGY1_ON||EGY1.has(g.side_id))?g.side_id:g.opp_id;
+    const rep=g.players.find(x=>String(x.m.sid)===anchor)||g.players[0];
+    const f=rep.m;
+    return {
+      f, club:f.side, club_id:anchor, opp:f.opp, opp_id:f.oid,
+      // Everyone in the match, both teams -- the panel groups them by side.
+      players:g.players.map(x=>x.p),
+      byId:g.players,
+      t:Date.parse(f.fd||"")||0,
+    };
+  });
+
+  // ONE match per club: its most recent. Every EGY1 club has many matches across
+  // the window -- each player's last game may be a different round -- but "last
+  // result" means the club's newest, so keep only that per anchor club. A match
+  // is claimed by the newest-dated appearance of each club as an anchor.
+  const latestByClub=new Map();
+  for(const g of games.sort((a,b)=>b.t-a.t)){
+    if(!latestByClub.has(g.club_id))latestByClub.set(g.club_id,g);
+  }
+  // Dedup: if Zamalek's last match and Cleopatra's last match are the SAME game
+  // (they played each other), it must show once, not once per club. Keyed by the
+  // ordered pair of clubs + date, the same key the match was bucketed under.
+  const seen=new Set(), games2=[];
+  for(const g of [...latestByClub.values()].sort((a,b)=>b.t-a.t)){
+    const key=[String(g.club_id),String(g.opp_id)].sort().join("-")+"|"+g.f.fd;
+    if(seen.has(key))continue;
+    seen.add(key); games2.push(g);
+  }
+
   return `<table class="grid fxlast"><thead><tr>
-      <th class="c-x"></th><th>Club</th><th class="hide-s">Date</th><th>Opponent</th>
-      <th class="r">Result</th><th class="r hide-s">Featured</th></tr></thead><tbody>
-    ${games.map((g,i)=>{
+      <th class="c-x"></th><th>Match</th><th class="hide-s">Date</th><th class="r">Result</th>
+      <th class="r hide-s">Featured</th></tr></thead><tbody>
+    ${games2.map((g,i)=>{
       const f=g.f;
       const crest=CRESTS[g.club_id]?`<img class="cc" src="${esc(CRESTS[g.club_id])}" alt="" loading="lazy">`:"";
-      const oc=CRESTS[f.oid]?`<img class="cc" src="${esc(CRESTS[f.oid])}" alt="" loading="lazy">`:"";
+      const oc=CRESTS[g.opp_id]?`<img class="cc" src="${esc(CRESTS[g.opp_id])}" alt="" loading="lazy">`:"";
       const res=f.r==="W"?"W":f.r==="L"?"L":"D";
-      const scorers=g.players.filter(p=>{const m=lastMatch(p);return m.g||m.a;})
-        .map(p=>{const m=lastMatch(p);return `${esc(p.name)}${m.g?` ${m.g}G`:""}${m.a?` ${m.a}A`:""}`;});
-      const names=(scorers.length?scorers:g.players.slice(0,6).map(p=>esc(p.name)))
-        .slice(0,6).join(", ")+(g.players.length>6&&!scorers.length?` +${g.players.length-6} more`:"");
+      const scorers=g.byId.filter(x=>x.m.g||x.m.a)
+        .map(x=>`${esc(x.p.name)}${x.m.g?` ${x.m.g}G`:""}${x.m.a?` ${x.m.a}A`:""}`);
+      const featured=g.players.length;
 
-      // The squad sub-row: which of the players we track featured, ordered by
-      // minutes so the men who actually played the game come first. Minutes
-      // rather than a starter flag, because the feed gives minutes. It is NOT
-      // the full eleven -- only the players in this database -- so the heading
-      // says "tracked players" rather than implying a team sheet.
-      const sq=g.players.slice()
-        .map(p=>({p,m:lastMatch(p)}))
-        .sort((a,b)=>(b.m.min||0)-(a.m.min||0));
-      const cells=sq.map(({p,m})=>{
-        // Where he is NOW, beside what he did in the match. For most this is the
-        // same club the row is grouped under, but a player can have PLAYED this
-        // game and since moved -- or become a free agent -- and that is the most
-        // actionable fact about him, so it is shown, and flagged when his current
-        // club differs from the one whose match this is.
-        const now=isFree(p)?`<i class="fa">Free agent</i>`
-          :p.club&&p.club!==g.club?`<i class="moved">now ${esc(p.club)}</i>`:"";
-        return `<button class="sqp" data-id="${esc(p.tm_id)}">
-          <b>${esc(p.name)}</b>
-          <span>${esc(p.position||"")} · ${m.min?m.min+"'":"—"}${
-            m.g?` · <i class="sg">${m.g}G</i>`:""}${m.a?` · <i class="sg">${m.a}A</i>`:""}</span>
-          ${now?`<span class="sqnow">${now}</span>`:""}
-        </button>`;
-      }).join("");
+      // Squad panel, split by the two sides. A player chip shows minutes, any
+      // goal/assist, and where he is NOW (still here / moved / free agent). NOT
+      // the full eleven -- only players in this database.
+      const sideCells=(clubName)=>g.byId
+        .filter(x=>x.m.side===clubName)
+        .sort((a,b)=>(b.m.min||0)-(a.m.min||0))
+        .map(({p,m})=>{
+          const now=isFree(p)?`<i class="fa">free agent</i>`
+            :p.club&&p.club!==p_side(m)?`<i class="moved">now ${esc(p.club)}</i>`:"";
+          return `<button class="sqp" data-id="${esc(p.tm_id)}">
+            <b>${esc(p.name)}</b>
+            <span>${esc(p.position||"")} · ${m.min?m.min+"'":"—"}${
+              m.g?` · <i class="sg">${m.g}G</i>`:""}${m.a?` · <i class="sg">${m.a}A</i>`:""}</span>
+            ${now?`<span class="sqnow">${now}</span>`:""}
+          </button>`;
+        }).join("");
+
+      const homeName=f.side, awayName=f.opp;
+      const homeSquad=sideCells(homeName), awaySquad=sideCells(awayName);
 
       return `<tr class="fxrow" data-game="${i}">
         <td class="c-x"><span class="xtoggle">▸</span></td>
-        <td><b>${crest}${esc(g.club)}</b><small class="cn">${scorers.length?"⚽ ":""}${esc(names)}</small></td>
+        <td><b>${crest}${esc(f.side||"—")} <span class="vs">v</span> ${oc}${esc(f.opp||"—")}</b>
+          <small class="cn">${scorers.length?"⚽ "+esc(scorers.slice(0,4).join(", ")):esc(f.cn||"")}</small></td>
         <td class="hide-s"><b>${esc(f.fd||"—")}</b><small class="cn">${esc(f.cn||"")}</small></td>
-        <td>${f.v==="home"?'<span class="tag">Home</span>':f.v==="away"?'<span class="tag">Away</span>':""} ${oc}${esc(f.opp||"—")}</td>
         <td class="r"><span class="res ${res}">${esc(f.sc||"")}</span></td>
-        <td class="r num">${g.players.length}</td></tr>
-      <tr class="fxsquad" data-squad="${i}" hidden><td></td><td colspan="5">
-        <div class="sqh">Tracked players who featured — ${g.players.length} in this database, not the full team</div>
-        <div class="sqgrid">${cells}</div></td></tr>`;
+        <td class="r num">${featured}</td></tr>
+      <tr class="fxsquad" data-squad="${i}" hidden><td></td><td colspan="4">
+        ${homeSquad?`<div class="sqside"><div class="sqh">${esc(homeName)} — tracked players</div><div class="sqgrid">${homeSquad}</div></div>`:""}
+        ${awaySquad?`<div class="sqside"><div class="sqh">${esc(awayName)} — tracked players</div><div class="sqgrid">${awaySquad}</div></div>`:""}
+      </td></tr>`;
     }).join("")}</tbody></table>`;
 }
+
+// The club a player played a given match FOR -- the side named on the row.
+function p_side(m){ return m.side||""; }
 
 function drawLastResults(){
   const all=rows().filter(p=>lastMatch(p));
@@ -1742,12 +1770,13 @@ function drawLastResults(){
           <th class="r">Result</th><th class="r hide-s">In the match</th></tr></thead>
         <tbody>${abroad.map(lastRow).join("")}</tbody></table></div>`
     : "";
-  // One row per club, that club's last match. Count of clubs = distinct sides
-  // played FOR, which is how egyptLastResults groups.
-  const nEgyClubs=new Set(egy.map(p=>lastMatch(p).side||p.club)).size;
-  const egyBlock=egy.length
-    ? `<div class="fxgrp"><div class="ntgh"><b class="eg">Egyptian league</b><span>${nEgyClubs} club${nEgyClubs===1?"":"s"} · ${egy.length} player${egy.length===1?"":"s"}</span></div>
-        <p class="ntnote">Each club's last match, and the tracked players who featured. Open a row for the squad — with each player's current club, or free-agent status.</p>
+  // Count the EGY1 clubs whose last match is shown -- players who last featured
+  // for a non-top-flight side are not in this section, so the count is of clubs
+  // that will actually appear, not of everyone tagged Egyptian.
+  const egClubs=new Set(egy.map(p=>String(lastMatch(p).sid)).filter(id=>EGY1.has(id)));
+  const egyBlock=egClubs.size
+    ? `<div class="fxgrp"><div class="ntgh"><b class="eg">Egyptian Premier League</b><span>${egClubs.size} club${egClubs.size===1?"":"s"}</span></div>
+        <p class="ntnote">Each club's last league match — one row per game, both teams. Open a row for the line-ups, with each player's current club or free-agent status. Players whose last match was for a lower-division or foreign club are not shown here.</p>
         ${egyptLastResults(egy)}</div>`
     : "";
 
@@ -1887,8 +1916,16 @@ function drawAccount(){
 
 async function boot(){
   const load=n=>fetch(`data/${n}.json`).then(r=>r.json()).catch(()=>({}));
-  [DATA,MSTATS,CRESTS,NEXTM,NATIDS]=await Promise.all(
-    ["data","mstats","crests","nextm","natids"].map(load));
+  let egy1arr;
+  [DATA,MSTATS,CRESTS,NEXTM,NATIDS,egy1arr]=await Promise.all(
+    ["data","mstats","crests","nextm","natids","egy1"].map(load));
+  // The current Egyptian Premier League's clubs, by verein id. The last-results
+  // view uses it to keep the Egyptian section to the actual top flight -- without
+  // it, grouping by the club a player featured for pulled in every foreign youth
+  // side and lower-division team a diaspora player ever appeared for (Rostov,
+  // Proxy, Dayrout, Liverpool U21). Empty array if the file is absent, which
+  // simply shows every side, the prior behaviour.
+  EGY1=new Set(Array.isArray(egy1arr)?egy1arr.map(String):[]);
   // Copied from the dossier, where hiding a cap-tied player is right: that site
   // lists who Egypt can still sign. Here it is wrong. This registry answers "who
   // is out there at all", and a player cap-tied to Qatar is still an Egyptian
