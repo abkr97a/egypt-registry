@@ -1024,7 +1024,13 @@ function drawNav(){
     ["roster","Roster",n,"Every player in the registry"],
     ["scout","Scouting",withMatch,"Squad status across the last ten club matchdays"],
     ["fix","Upcoming fixtures",withFix,"Next match for each player's club"],
-    ["nat","National teams",withNat,"National-team appearances and what they mean for eligibility"],
+    // National caps — the player-level view: who has played for whom, and what it
+    // means for eligibility. Renamed off "National teams" so that name can go to
+    // the team-level fixtures tab, which is what most readers expect it to mean.
+    ["nat","National caps",withNat,"National-team appearances and what they mean for eligibility"],
+    // National teams — team-level, not player-level: Egypt's sides and their recent
+    // and upcoming matches. Count is the number of teams carrying any fixture data.
+    ["natfix","National teams",natTeamCount(),"Egypt's national sides — recent results and upcoming matches"],
     // The game. No count — it is not a cut of the registry, it is a blank pitch to
     // fill — so it carries a star instead, marking it as the one view that is play.
     ["build","⚽ Build XI","","Pick your dream Egypt XI from the eligible pool and share it"],
@@ -1360,14 +1366,27 @@ function natBucket(p){
   if(!snr.length)return "open";
   return snr.every(t=>/^egypt/i.test(t))?"egypt":"tied";
 }
-// Egypt's own upcoming matches — team-level, not tied to any player. Sits at the
-// top of the National teams view because that view is already about Egypt's sides;
-// this answers "when do they play next" beside "who has played for them".
-//
-// A national side plays in windows with long gaps, so "nothing scheduled" is the
-// normal state between them, not an error. When there are no upcoming fixtures at
-// all, the section says so once and shows each team's most recent result instead,
-// so the reader sees the teams and their last outing rather than an empty box.
+/* ---------- view: national teams (team-level fixtures) ----------
+   Egypt's national sides and their matches — team-level, not tied to any player.
+   Its own tab, separate from "National caps" (which is the player-level view of
+   who has played for whom). Per team: the last five results and the next five
+   scheduled matches, when found.
+
+   A national side plays in windows with long gaps, so a team with no upcoming
+   fixture is the normal state, not an error — the recent results carry the card
+   until the next window is published. */
+const NAT_ORDER=["Egypt","Egypt Olympic","Egypt U23","Egypt U20","Egypt U17"];
+function natTeams(){
+  const teams=Object.values(NATFIX||{}).filter(t=>(t.upcoming||[]).length||(t.recent||[]).length);
+  teams.sort((a,b)=>{
+    const ia=NAT_ORDER.indexOf(a.name), ib=NAT_ORDER.indexOf(b.name);
+    return (ia<0?99:ia)-(ib<0?99:ib);
+  });
+  return teams;
+}
+// Count for the nav tab: how many teams carry any fixture data at all.
+function natTeamCount(){ return natTeams().length; }
+
 function natMatchRow(f,past){
   const crest=CRESTS[f.oid]?`<img class="cc" src="${esc(CRESTS[f.oid])}" alt="" loading="lazy">`:"";
   const vs=f.ha==="H"?"vs":f.ha==="A"?"at":"vs";
@@ -1381,7 +1400,7 @@ function natMatchRow(f,past){
       when+=` · ${tm}`;
     }
   }
-  const result=past&&f.score?`<span class="natres">${esc(f.score)}</span>`:"";
+  const result=past&&f.score?`<span class="natfxres">${esc(f.score)}</span>`:"";
   return `<div class="natfxrow${past?" past":""}">
     <span class="natfxwhen">${when}</span>
     <span class="natfxopp">${esc(vs)} ${crest}${esc(f.opp||"—")}${f.ha?` <i class="natfxha">${f.ha==="H"?"Home":"Away"}</i>`:""}</span>
@@ -1389,36 +1408,37 @@ function natMatchRow(f,past){
     ${result}
   </div>`;
 }
-function natFixturesHTML(){
-  const teams=Object.values(NATFIX||{});
-  if(!teams.length)return "";
-  // Draw senior first, then the youth sides in age order, ignoring teams that
-  // carry nothing at all.
-  const order=["Egypt","Egypt Olympic","Egypt U23","Egypt U20","Egypt U17"];
-  teams.sort((a,b)=>{
-    const ia=order.indexOf(a.name), ib=order.indexOf(b.name);
-    return (ia<0?99:ia)-(ib<0?99:ib);
-  });
+function drawNatFixtures(){
+  const teams=natTeams();
+  $("count").innerHTML=`${teams.length}<small>team${teams.length===1?"":"s"}</small>`;
+  if(!teams.length){
+    $("body").innerHTML=`<div class="empty"><b>No national-team fixtures yet</b>Egypt's schedule has not been published. Check back when the next international window is announced.</div>`;
+    return;
+  }
   const anyUpcoming=teams.some(t=>(t.upcoming||[]).length);
+  const sub=anyUpcoming
+    ? "Egypt's national sides — senior and youth. Recent results and the next scheduled matches for each."
+    : "No fixtures are scheduled right now — normal between international windows. Recent results are shown for each side until the next window is announced.";
+  // Each team card: up to five upcoming (newest window first) then up to five
+  // recent results. Upcoming are oldest-first (soonest at the top); recent are
+  // newest-first. A subheading marks the two runs so a result and a fixture are
+  // never mistaken for one another.
   const blocks=teams.map(t=>{
-    const up=t.upcoming||[], rec=t.recent||[];
-    if(!up.length&&!rec.length)return "";
+    const up=(t.upcoming||[]).slice(0,5);
+    const rec=(t.recent||[]).slice(0,5);
     const crest=CRESTS[t.sid]?`<img class="cc" src="${esc(CRESTS[t.sid])}" alt="" loading="lazy">`:"";
-    // Upcoming when there is any; otherwise the single most recent result, marked
-    // as past, so an out-of-window team still shows where it last played.
-    const rowsHTML=up.length
-      ? up.slice(0,5).map(f=>natMatchRow(f,false)).join("")
-      : `<div class="natfxnone">No match scheduled — last out:</div>${natMatchRow(rec[0],true)}`;
+    const upHTML=up.length
+      ? `<div class="natfxsub up">Upcoming</div>${up.map(f=>natMatchRow(f,false)).join("")}`
+      : `<div class="natfxsub none">No match scheduled</div>`;
+    const recHTML=rec.length
+      ? `<div class="natfxsub past">Recent results</div>${rec.map(f=>natMatchRow(f,true)).join("")}`
+      : "";
     return `<div class="natfxteam">
       <div class="natfxth">${crest}<b>${esc(t.name)}</b></div>
-      ${rowsHTML}</div>`;
+      ${upHTML}${recHTML}</div>`;
   }).join("");
-  if(!blocks.trim())return "";
-  const sub=anyUpcoming
-    ? "Egypt's national sides — senior and youth — and when they play next."
-    : "No fixtures are scheduled right now — normal between international windows. Each side's most recent match is shown until the next window is announced.";
-  return `<section class="natfx">
-    <div class="natfxhead"><b>Egypt's upcoming matches</b><span>${esc(sub)}</span></div>
+  $("body").innerHTML=`<section class="natfx">
+    <div class="natfxhead"><b>Egypt's national teams</b><span>${esc(sub)}</span></div>
     <div class="natfxgrid">${blocks}</div>
   </section>`;
 }
@@ -1426,10 +1446,8 @@ function natFixturesHTML(){
 function drawNational(){
   const list=rows().filter(p=>caps(p).total);
   $("count").innerHTML=`${list.length}<small>with caps</small>`;
-  const fx=natFixturesHTML();
   if(!list.length){
-    $("body").innerHTML=fx+`<div class="empty"><b>Nobody matches</b>No player in this filter has a national-team appearance.${savedNote()}</div>`;
-    wireRows();
+    $("body").innerHTML=`<div class="empty"><b>Nobody matches</b>No player in this filter has a national-team appearance.${savedNote()}</div>`;
     return;
   }
   // Every side he has played for, senior first, as badges. This is what the old
@@ -1468,7 +1486,7 @@ function drawNational(){
         return `<span class="natside ${isYouth(t)?"y":/^egypt/i.test(t)?"eg":"sr"}" title="${esc(t)} — ${n} appearance${n===1?"":"s"}">${flag}${esc(label)}<i>${n}</i></span>`;
       }).join("");
   };
-  $("body").innerHTML=fx+NATBUCKETS.map(([key,label,note])=>{
+  $("body").innerHTML=NATBUCKETS.map(([key,label,note])=>{
     const g=list.filter(p=>natBucket(p)===key);
     if(!g.length)return "";
     g.sort((a,b)=>caps(b).senior-caps(a).senior||(a.name||"").localeCompare(b.name||""));
@@ -2039,6 +2057,7 @@ function shareBuild(){
 function drawBody(){
   if(S.view==="build")return drawBuild();
   if(S.view==="fix")return drawFixtures();
+  if(S.view==="natfix")return drawNatFixtures();
   if(S.view==="nat")return drawNational();
   if(S.view==="scout")return drawScouting();
   drawTable();
