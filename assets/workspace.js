@@ -13,6 +13,10 @@ const num=v=>{const n=parseInt(v,10);return isNaN(n)?0:n;};
 // questions, and carrying one sort across both meant opening Fixtures showed them
 // alphabetically when the only useful order is who plays soonest.
 const S={view:"roster",q:"",sort:"name",dir:1,fxsort:"date",fxdir:1,fxview:"list",
+         // Fixtures splits in two: the match just PLAYED and the one COMING.
+         // "next" first because a scout planning to watch someone cares about
+         // the upcoming game; "last" is the result they may have missed.
+         fxtab:"next",
          // Scouting defaults to most-played first: the table exists to rank, and
          // an unsorted list makes the reader do the ranking.
          scsort:"played",scdir:-1,sel:null,onlySaved:false,
@@ -1121,6 +1125,20 @@ const DAY=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
    derives from f.utc; f.time is only a fallback for a fixture scraped before
    the utc field existed, and is marked in the UI when used. */
 const CAIRO="Africa/Cairo";
+
+// The last match a player actually PLAYED, for the Fixtures "Last" tab. It is
+// the newest form row he was on the pitch for -- form[] is newest-first, and a
+// row with a score is one that has been played. Not a benched or missed game: a
+// scout asking "how did his last match go" means the last one he was IN.
+//
+// This lives in the form data already; NEXTM only holds the upcoming fixture.
+// That is why a stale NEXTM could show a match as "next" while the same match
+// sat in Scouting as played -- they read different files.
+function lastMatch(p){
+  const form=(MSTATS[p.tm_id]||{}).form||[];
+  return form.find(f=>f.part==="P"&&(f.min||0)>0&&f.sc)||null;
+}
+
 const koTime=f=>{
   if(!f||!f.utc)return f&&f.time?esc(f.time):"";
   const d=new Date(f.utc);
@@ -1209,7 +1227,16 @@ function agendaHTML(list){
   }).join("");
 }
 
+// The two Fixtures tabs. Rendered once at the top of the view; the rest of the
+// view keys off S.fxtab.
+function fxTabs(nNext,nLast){
+  const t=(k,label,n)=>`<button data-fxt="${k}"${S.fxtab===k?' class="on"':""}>${label}`
+    +`<span class="n">${n}</span></button>`;
+  return `<div class="fxtabs">${t("next","Next fixture",nNext)}${t("last","Last result",nLast)}</div>`;
+}
+
 function drawFixtures(){
+  if(S.fxtab==="last")return drawLastResults();
   // A free agent has no next match. The fixture stored against him belongs to
   // the club he LEFT -- Adam Tolba was listed as away at Holzheimer SG on 15 Aug
   // while being a free agent, which is his old side's fixture and tells a scout
@@ -1300,7 +1327,9 @@ function drawFixtures(){
     ? `<div class="fxgrp"><div class="ntgh"><b>Egyptian league — no dates yet</b><span>${egyPending.length} club${egyPending.length===1?"":"s"}</span></div>
         <p class="ntnote">Transfermarkt has not published this season's Egyptian fixtures. Their players are in the database; only the schedule is missing: ${egyPending.map(esc).join(", ")}.</p></div>`
     : "";
-  $("body").innerHTML=abroadBlock+egyBlock+pendingBlock;
+  const nLast=rows().filter(p=>lastMatch(p)).length;
+  $("body").innerHTML=fxTabs(all.length,nLast)+abroadBlock+egyBlock+pendingBlock;
+  $("body").querySelectorAll("[data-fxt]").forEach(b=>b.onclick=()=>{S.fxtab=b.dataset.fxt;drawFixtures();});
   // querySelectorAll over whatever rendered: with no players abroad there is no
   // sortable header, and this simply wires nothing.
   $("body").querySelectorAll("[data-fxv]").forEach(b=>b.onclick=()=>{
@@ -1534,6 +1563,61 @@ function drawScouting(){
     if(S.scsort===k)S.scdir=-S.scdir; else {S.scsort=k;S.scdir=k==="name"?1:-1;}
     drawScouting();
   });
+  wireRows();
+}
+
+/* Fixtures · Last result — the match each player most recently PLAYED.
+   Reads the form data, which every other view already uses, so this can never
+   disagree with what Scouting shows about the same match. Sorted newest first,
+   which is what "last" means. */
+function drawLastResults(){
+  const all=rows().filter(p=>lastMatch(p));
+  $("count").innerHTML=`${all.length}<small>with a result</small>`;
+  const nNext=rows().filter(p=>NEXTM[p.tm_id]&&!isFree(p)).length;
+
+  if(!all.length){
+    $("body").innerHTML=fxTabs(nNext,0)
+      +`<div class="empty"><b>No results yet</b>No player in this filter has a recent club match on record.${savedNote()}</div>`;
+    $("body").querySelectorAll("[data-fxt]").forEach(b=>b.onclick=()=>{S.fxtab=b.dataset.fxt;drawFixtures();});
+    return;
+  }
+
+  // Newest match first. Parsed as a date, not string-sorted, for the same reason
+  // the calendar is: "Aug 1" must not sort after "Aug 11".
+  const list=all.slice().sort((a,b)=>{
+    const ta=Date.parse(lastMatch(a).fd||"")||0, tb=Date.parse(lastMatch(b).fd||"")||0;
+    return (tb-ta)||(a.name||"").localeCompare(b.name||"");
+  });
+
+  const body=list.map(p=>{
+    const f=lastMatch(p);
+    const oc=CRESTS[f.oid]?`<img class="cc" src="${esc(CRESTS[f.oid])}" alt="" loading="lazy">`:"";
+    const own=CRESTS[f.sid]||CRESTS[p.club_id];
+    const ownc=own?`<img class="cc" src="${esc(own)}" alt="" loading="lazy">`:"";
+    // W/L/D on the score, from the player's own side. sc is written own-team
+    // first, verified across the whole file, so the result never needs a venue
+    // flip. A goal or assist in that match is the one individual fact worth
+    // surfacing beside the team result.
+    const res=f.r==="W"?"W":f.r==="L"?"L":"D";
+    const ga=(f.g||f.a)?`<small class="cn">${f.g?f.g+"G":""}${f.g&&f.a?" ":""}${f.a?f.a+"A":""}</small>`:"";
+    return `<tr data-id="${esc(p.tm_id)}">
+      ${starCell(p)}
+      <td><span class="who">${p.photo?`<img class="face" src="${esc(p.photo)}" alt="" loading="lazy">`
+        :`<span class="face ini">${esc(initials(p.name))}</span>`}<span class="nm"><b>${esc(p.name)}</b>
+        <span>${ownc}${esc(p.club||"")}${p.plays_in?` · ${esc(p.plays_in)}`:""}</span></span></span></td>
+      <td class="hide-s"><b>${esc(f.fd||"—")}</b><small class="cn">${esc(f.cn||"")}</small></td>
+      <td>${f.v==="home"?'<span class="tag">Home</span>':f.v==="away"?'<span class="tag">Away</span>':""}
+        ${oc}${esc(f.opp||"—")}</td>
+      <td class="r"><span class="res ${res}">${esc(f.sc||"")}</span></td>
+      <td class="r hide-s">${f.min?f.min+"'":""} ${ga}</td></tr>`;
+  }).join("");
+
+  $("body").innerHTML=fxTabs(nNext,all.length)
+    +`<div class="fxgrp"><table class="grid"><thead><tr><th class="c-save"></th>
+        <th>Player</th><th class="hide-s">Date</th><th>Opponent</th>
+        <th class="r">Result</th><th class="r hide-s">In the match</th></tr></thead>
+      <tbody>${body}</tbody></table></div>`;
+  $("body").querySelectorAll("[data-fxt]").forEach(b=>b.onclick=()=>{S.fxtab=b.dataset.fxt;drawFixtures();});
   wireRows();
 }
 
