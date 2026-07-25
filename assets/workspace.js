@@ -1649,7 +1649,11 @@ function egyptLastResults(list){
 }
 
 function drawLastResults(){
-  const all=rows().filter(p=>lastMatch(p));
+  // A free agent's last recorded match was for the club he LEFT, so it is not a
+  // current result and grouping it under "Without Club" invented a 28-player
+  // phantom club in the Egyptian list. The Next tab already drops free agents
+  // for the same reason; Last must too, or the two tabs count different squads.
+  const all=rows().filter(p=>lastMatch(p)&&!isFree(p));
   $("count").innerHTML=`${all.length}<small>with a result</small>`;
   const nNext=rows().filter(p=>NEXTM[p.tm_id]&&!isFree(p)).length;
 
