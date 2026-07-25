@@ -1583,6 +1583,71 @@ function drawScouting(){
    Reads the form data, which every other view already uses, so this can never
    disagree with what Scouting shows about the same match. Sorted newest first,
    which is what "last" means. */
+// One player's last-result row, for the per-player (abroad) table.
+function lastRow(p){
+  const f=lastMatch(p);
+  const oc=CRESTS[f.oid]?`<img class="cc" src="${esc(CRESTS[f.oid])}" alt="" loading="lazy">`:"";
+  const own=CRESTS[f.sid]||CRESTS[p.club_id];
+  const ownc=own?`<img class="cc" src="${esc(own)}" alt="" loading="lazy">`:"";
+  // W/L/D from the player's own side. sc is written own-team first, verified
+  // across the whole file, so the result never needs a venue flip. A goal or
+  // assist is the one individual fact worth surfacing beside the team result.
+  const res=f.r==="W"?"W":f.r==="L"?"L":"D";
+  const ga=(f.g||f.a)?`<small class="cn">${f.g?f.g+"G":""}${f.g&&f.a?" ":""}${f.a?f.a+"A":""}</small>`:"";
+  return `<tr data-id="${esc(p.tm_id)}">
+    ${starCell(p)}
+    <td><span class="who">${p.photo?`<img class="face" src="${esc(p.photo)}" alt="" loading="lazy">`
+      :`<span class="face ini">${esc(initials(p.name))}</span>`}<span class="nm"><b>${esc(p.name)}</b>
+      <span>${ownc}${esc(p.club||"")}${p.plays_in?` · ${esc(p.plays_in)}`:""}</span></span></span></td>
+    <td class="hide-s"><b>${esc(f.fd||"—")}</b><small class="cn">${esc(f.cn||"")}</small></td>
+    <td>${f.v==="home"?'<span class="tag">Home</span>':f.v==="away"?'<span class="tag">Away</span>':""}
+      ${oc}${esc(f.opp||"—")}</td>
+    <td class="r"><span class="res ${res}">${esc(f.sc||"")}</span></td>
+    <td class="r hide-s">${f.min?f.min+"'":""} ${ga}</td></tr>`;
+}
+
+/* The Egyptian league's last results grouped BY CLUB, the same as the Next tab.
+   One club's match is one row -- 15 Zed FC players all showing "0-2 vs Wadi
+   Degla" was the exact repetition the Next tab already grouped away, and it read
+   the same way here.
+
+   The club fixture is the result shared by every player in the group; who from
+   the squad featured, and any goalscorer, is the per-squad detail that stays on
+   the row. Keyed on club + date + opponent so a squad that played two matches in
+   the window shows both, not one merged row. */
+function egyptLastResults(list){
+  const byGame=new Map();
+  list.forEach(p=>{
+    const f=lastMatch(p);
+    const k=`${p.club||"—"}|${f.fd}|${f.opp}`;
+    if(!byGame.has(k))byGame.set(k,{club:p.club||"—",club_id:p.club_id,f,players:[]});
+    byGame.get(k).players.push(p);
+  });
+  const games=[...byGame.values()].sort((a,b)=>
+    (Date.parse(b.f.fd||"")||0)-(Date.parse(a.f.fd||"")||0));
+  return `<table class="grid"><thead><tr>
+      <th>Club</th><th class="hide-s">Date</th><th>Opponent</th>
+      <th class="r">Result</th><th class="r hide-s">Featured</th></tr></thead><tbody>
+    ${games.map(g=>{
+      const f=g.f;
+      const crest=CRESTS[g.club_id]?`<img class="cc" src="${esc(CRESTS[g.club_id])}" alt="" loading="lazy">`:"";
+      const oc=CRESTS[f.oid]?`<img class="cc" src="${esc(CRESTS[f.oid])}" alt="" loading="lazy">`:"";
+      const res=f.r==="W"?"W":f.r==="L"?"L":"D";
+      // Scorers named, because "who scored in the win" is the fact a scout most
+      // wants off this row. Capped so it stays scannable.
+      const scorers=g.players.filter(p=>{const m=lastMatch(p);return m.g||m.a;})
+        .map(p=>{const m=lastMatch(p);return `${esc(p.name)}${m.g?` ${m.g}G`:""}${m.a?` ${m.a}A`:""}`;});
+      const names=(scorers.length?scorers:g.players.slice(0,6).map(p=>esc(p.name)))
+        .slice(0,6).join(", ")+(g.players.length>6&&!scorers.length?` +${g.players.length-6} more`:"");
+      return `<tr>
+        <td><b>${crest}${esc(g.club)}</b><small class="cn">${scorers.length?"⚽ ":""}${esc(names)}</small></td>
+        <td class="hide-s"><b>${esc(f.fd||"—")}</b><small class="cn">${esc(f.cn||"")}</small></td>
+        <td>${f.v==="home"?'<span class="tag">Home</span>':f.v==="away"?'<span class="tag">Away</span>':""} ${oc}${esc(f.opp||"—")}</td>
+        <td class="r"><span class="res ${res}">${esc(f.sc||"")}</span></td>
+        <td class="r num">${g.players.length}</td></tr>`;
+    }).join("")}</tbody></table>`;
+}
+
 function drawLastResults(){
   const all=rows().filter(p=>lastMatch(p));
   $("count").innerHTML=`${all.length}<small>with a result</small>`;
@@ -1595,41 +1660,28 @@ function drawLastResults(){
     return;
   }
 
-  // Newest match first. Parsed as a date, not string-sorted, for the same reason
-  // the calendar is: "Aug 1" must not sort after "Aug 11".
-  const list=all.slice().sort((a,b)=>{
-    const ta=Date.parse(lastMatch(a).fd||"")||0, tb=Date.parse(lastMatch(b).fd||"")||0;
-    return (tb-ta)||(a.name||"").localeCompare(b.name||"");
-  });
+  const egy=all.filter(p=>basedOf(p)==="egypt");
+  const abroad=all.filter(p=>basedOf(p)==="abroad")
+    // Newest first, dates parsed not string-sorted.
+    .sort((a,b)=>(Date.parse(lastMatch(b).fd||"")||0)-(Date.parse(lastMatch(a).fd||"")||0)
+      ||(a.name||"").localeCompare(b.name||""));
+  const nEgyClubs=new Set(egy.map(p=>`${p.club}|${lastMatch(p).fd}|${lastMatch(p).opp}`)).size;
 
-  const body=list.map(p=>{
-    const f=lastMatch(p);
-    const oc=CRESTS[f.oid]?`<img class="cc" src="${esc(CRESTS[f.oid])}" alt="" loading="lazy">`:"";
-    const own=CRESTS[f.sid]||CRESTS[p.club_id];
-    const ownc=own?`<img class="cc" src="${esc(own)}" alt="" loading="lazy">`:"";
-    // W/L/D on the score, from the player's own side. sc is written own-team
-    // first, verified across the whole file, so the result never needs a venue
-    // flip. A goal or assist in that match is the one individual fact worth
-    // surfacing beside the team result.
-    const res=f.r==="W"?"W":f.r==="L"?"L":"D";
-    const ga=(f.g||f.a)?`<small class="cn">${f.g?f.g+"G":""}${f.g&&f.a?" ":""}${f.a?f.a+"A":""}</small>`:"";
-    return `<tr data-id="${esc(p.tm_id)}">
-      ${starCell(p)}
-      <td><span class="who">${p.photo?`<img class="face" src="${esc(p.photo)}" alt="" loading="lazy">`
-        :`<span class="face ini">${esc(initials(p.name))}</span>`}<span class="nm"><b>${esc(p.name)}</b>
-        <span>${ownc}${esc(p.club||"")}${p.plays_in?` · ${esc(p.plays_in)}`:""}</span></span></span></td>
-      <td class="hide-s"><b>${esc(f.fd||"—")}</b><small class="cn">${esc(f.cn||"")}</small></td>
-      <td>${f.v==="home"?'<span class="tag">Home</span>':f.v==="away"?'<span class="tag">Away</span>':""}
-        ${oc}${esc(f.opp||"—")}</td>
-      <td class="r"><span class="res ${res}">${esc(f.sc||"")}</span></td>
-      <td class="r hide-s">${f.min?f.min+"'":""} ${ga}</td></tr>`;
-  }).join("");
+  const abroadBlock=abroad.length
+    ? `<div class="fxgrp"><div class="ntgh"><b>Abroad</b><span>${abroad.length} player${abroad.length===1?"":"s"}</span></div>
+        <table class="grid"><thead><tr><th class="c-save"></th>
+          <th>Player</th><th class="hide-s">Date</th><th>Opponent</th>
+          <th class="r">Result</th><th class="r hide-s">In the match</th></tr></thead>
+        <tbody>${abroad.map(lastRow).join("")}</tbody></table></div>`
+    : "";
+  // By club, exactly as the Next tab does, so one squad's match is one row.
+  const egyBlock=egy.length
+    ? `<div class="fxgrp"><div class="ntgh"><b class="eg">Egyptian league</b><span>${nEgyClubs} match${nEgyClubs===1?"":"es"} · ${egy.length} player${egy.length===1?"":"s"}</span></div>
+        <p class="ntnote">Grouped by club: one result covers the whole squad. Scorers named where there were any.</p>
+        ${egyptLastResults(egy)}</div>`
+    : "";
 
-  $("body").innerHTML=fxTabs(nNext,all.length)
-    +`<div class="fxgrp"><table class="grid"><thead><tr><th class="c-save"></th>
-        <th>Player</th><th class="hide-s">Date</th><th>Opponent</th>
-        <th class="r">Result</th><th class="r hide-s">In the match</th></tr></thead>
-      <tbody>${body}</tbody></table></div>`;
+  $("body").innerHTML=fxTabs(nNext,all.length)+abroadBlock+egyBlock;
   $("body").querySelectorAll("[data-fxt]").forEach(b=>b.onclick=()=>{S.fxtab=b.dataset.fxt;drawFixtures();});
   wireRows();
 }
