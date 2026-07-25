@@ -1387,25 +1387,44 @@ function natTeams(){
 // Count for the nav tab: how many teams carry any fixture data at all.
 function natTeamCount(){ return natTeams().length; }
 
+// Egypt's goals are the FIRST number on TM's schedule (the club whose page it is
+// is always listed first), so "3:2" means Egypt scored 3. That lets a past result
+// be coloured win/draw/loss from Egypt's side without guessing.
+function natOutcome(score){
+  const m=/^(\d+):(\d+)/.exec(score||"");
+  if(!m)return "";
+  const us=+m[1], them=+m[2];
+  return us>them?"w":us<them?"l":"d";
+}
 function natMatchRow(f,past){
-  const crest=CRESTS[f.oid]?`<img class="cc" src="${esc(CRESTS[f.oid])}" alt="" loading="lazy">`:"";
-  const vs=f.ha==="H"?"vs":f.ha==="A"?"at":"vs";
-  // Render the stored instant in Cairo time; fall back to the scraped date.
-  let when=esc(f.date||"");
+  const crest=CRESTS[f.oid]
+    ?`<img class="natfxcrest" src="${esc(CRESTS[f.oid])}" alt="" loading="lazy">`
+    :`<span class="natfxcrest ini">${esc(initials(f.opp||"?"))}</span>`;
+  // Date always carries the YEAR now -- a youth side's last match can be a year or
+  // two back, and "Tue 7 Jul" alone hid which year. Cairo clock from the stored
+  // instant; date-only fallback when there is no kickoff time.
+  let day=esc(f.date||""), clock="";
   if(f.utc){
     const d=new Date(f.utc);
     if(!isNaN(d)){
-      when=d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",timeZone:"Africa/Cairo"});
-      const tm=d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit",timeZone:"Africa/Cairo"});
-      when+=` · ${tm}`;
+      day=d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",year:"numeric",timeZone:"Africa/Cairo"});
+      clock=d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit",timeZone:"Africa/Cairo"});
     }
   }
-  const result=past&&f.score?`<span class="natfxres">${esc(f.score)}</span>`:"";
+  const venue=f.ha==="H"?"H":f.ha==="A"?"A":"";
+  const venueTitle=f.ha==="H"?"Home":f.ha==="A"?"Away":"";
+  // Right side: a coloured result pill for past games, the kickoff time for
+  // upcoming ones. One column, so the rows line up whichever they are.
+  const right=past&&f.score
+    ? `<span class="natfxscore ${natOutcome(f.score)}" title="Egypt ${esc(f.score.replace(':','–'))}">${esc(f.score)}</span>`
+    : clock?`<span class="natfxtime">${esc(clock)}</span>`:"";
   return `<div class="natfxrow${past?" past":""}">
-    <span class="natfxwhen">${when}</span>
-    <span class="natfxopp">${esc(vs)} ${crest}${esc(f.opp||"—")}${f.ha?` <i class="natfxha">${f.ha==="H"?"Home":"Away"}</i>`:""}</span>
-    ${f.comp?`<span class="natfxcomp">${esc(f.comp)}</span>`:""}
-    ${result}
+    ${venue?`<span class="natfxven ${venue==="H"?"h":"a"}" title="${venueTitle}">${venue}</span>`:`<span class="natfxven none"></span>`}
+    <span class="natfxmid">
+      <span class="natfxopp">${crest}<b>${esc(f.opp||"—")}</b></span>
+      <span class="natfxmeta">${esc(day)}${f.comp?` · ${esc(f.comp)}`:""}</span>
+    </span>
+    ${right}
   </div>`;
 }
 function drawNatFixtures(){
