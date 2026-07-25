@@ -12,7 +12,7 @@
 <meta property="og:description" content="Every Egypt-eligible footballer playing abroad, with live form and squad status.">
 <meta property="og:url" content="https://abkr97a.github.io/egypt-registry/">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9A%BD%3C/text%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/workspace.css?v=32">
+<link rel="stylesheet" href="assets/workspace.css?v=33">
 </head>
 <body>
 
@@ -21,10 +21,20 @@
     <div class="brand">
       <a class="brandlink" href="./">
         <span class="bmark" aria-hidden="true">
-          <!-- A gold eagle silhouette — the flag's Eagle of Saladin, abstracted
-               to a mark small enough for chrome. Same gold as the landing page. -->
-          <svg viewBox="0 0 24 24" width="26" height="26">
-            <path fill="currentColor" d="M12 2.6c1.5 1.9 3.6 2.4 5.9 2.1-.5 1.4-1.6 2.2-3 2.5 1.7.5 3 .3 4.3-.5-.4 1.6-1.5 2.7-3.1 3.2 1.2.6 2.4.6 3.6.1-.7 1.5-2 2.3-3.6 2.5.6.9.6 1.9.2 2.9-.9-.8-1.9-1-3-.8.4 1 .3 2-.3 2.9-.6-.9-1.4-1.4-2.4-1.5v3.9h-1.2v-3.9c-1 .1-1.8.6-2.4 1.5-.6-.9-.7-1.9-.3-2.9-1.1-.2-2.1 0-3 .8-.4-1-.4-2 .2-2.9-1.6-.2-2.9-1-3.6-2.5 1.2.5 2.4.5 3.6-.1-1.6-.5-2.7-1.6-3.1-3.2 1.3.8 2.6 1 4.3.5-1.4-.3-2.5-1.1-3-2.5 2.3.3 4.4-.2 5.9-2.1z"/>
+          <!-- The Egyptian flag as the brand mark: three bands (red / white /
+               black) with the gold Eagle of Saladin on the white, rounded to a
+               chip. Reads instantly at chrome size, where the eagle alone looked
+               like a blob. Inline SVG, CSP-safe. -->
+          <svg viewBox="0 0 36 24" width="34" height="24" role="img" aria-label="Egypt">
+            <defs><clipPath id="fr"><rect width="36" height="24" rx="4"/></clipPath></defs>
+            <g clip-path="url(#fr)">
+              <rect width="36" height="8" fill="#ce1126"/>
+              <rect y="8" width="36" height="8" fill="#fff"/>
+              <rect y="16" width="36" height="8" fill="#0a0a0a"/>
+              <!-- eagle, small and centred on the white band -->
+              <path fill="#c09b2d" transform="translate(14.4 8.6) scale(0.62)"
+                d="M6 .2c.7.9 1.7 1.1 2.8 1-.2.7-.8 1-1.4 1.2.8.2 1.4.1 2-.3-.2.8-.7 1.3-1.5 1.5.6.3 1.1.3 1.7 0-.3.7-1 1.1-1.7 1.2.3.4.3.9.1 1.4-.4-.4-.9-.5-1.4-.4.2.5.1.9-.2 1.4-.3-.4-.7-.7-1.1-.7v1.8H6V8.2c-.5 0-.9.3-1.1.7-.3-.5-.3-.9-.2-1.4-.5-.1-1 0-1.4.4-.2-.5-.2-1 .1-1.4-.8-.1-1.4-.5-1.7-1.2.5.3 1.1.3 1.7 0-.7-.2-1.3-.7-1.5-1.5.6.4 1.2.5 2 .3-.6-.2-1.2-.5-1.4-1.2 1.1.1 2.1-.1 2.8-1z"/>
+            </g>
           </svg>
         </span>
         <span class="btext"><b>Egyptian Players</b><span>Scouting Workspace</span></span>
@@ -66,7 +76,7 @@
 <div class="authbox" id="authbox" role="dialog" aria-label="Sign in" hidden></div>
 
 <script src="assets/supabase-config.js"></script>
-<script src="assets/auth.js?v=32"></script>
-<script src="assets/workspace.js?v=32"></script>
+<script src="assets/auth.js?v=33"></script>
+<script src="assets/workspace.js?v=33"></script>
 </body>
 </html>
