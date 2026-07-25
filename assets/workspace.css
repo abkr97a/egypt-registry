@@ -254,37 +254,44 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;min-width:940px}
   background:linear-gradient(180deg,var(--raised),var(--surface))}
 .natfxhead b{display:block;font:800 14px/1.2 var(--sans)}
 .natfxhead span{display:block;color:var(--mut);font-size:12px;margin-top:3px;line-height:1.5}
-.natfxgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1px;
-  background:var(--line)}
-.natfxteam{background:var(--surface);padding:14px 16px}
-.natfxth{display:flex;align-items:center;gap:9px;margin-bottom:4px;
-  padding-bottom:10px;border-bottom:2px solid var(--line)}
+/* One team per row: full-width cards stacked vertically. Inside each, the matches
+   flow left-to-right as tiles (.natfxruns), so a wide screen shows a side's whole
+   run on one line instead of a tall narrow column. */
+.natfxgrid{display:flex;flex-direction:column;gap:1px;background:var(--line)}
+.natfxteam{background:var(--surface);padding:15px 18px}
+.natfxth{display:flex;align-items:center;gap:9px;margin-bottom:2px;
+  padding-bottom:11px;border-bottom:2px solid var(--line)}
 .natfxth .cc{width:24px;height:24px}
-.natfxth b{font:800 14px/1 var(--sans)}
+.natfxth b{font:800 15px/1 var(--sans)}
 
-/* A match row: venue chip · opponent (crest + name over date/comp meta) · result.
-   Three columns that line up across every row so the eye reads straight down the
-   scores. */
-.natfxrow{display:grid;grid-template-columns:auto 1fr auto;align-items:center;
-  gap:10px;padding:9px 0;border-top:1px solid var(--line)}
-.natfxrow:first-of-type,.natfxsub+.natfxrow{border-top:0}
-.natfxrow.past{opacity:.9}
+/* The horizontal run of match tiles for one section (upcoming / recent). Wraps to
+   a second line rather than scrolling, so nothing is hidden off-edge. */
+.natfxruns{display:flex;flex-wrap:wrap;gap:8px}
+
+/* A match TILE: a self-contained little card. Venue chip + opponent on top, a
+   muted date · competition line, and the result/time pill on its own. Fixed-ish
+   width so tiles align into a tidy row. */
+.natfxrow{flex:1 1 210px;max-width:280px;min-width:0;
+  display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:9px;
+  padding:9px 11px;border:1px solid var(--line);border-radius:10px;
+  background:var(--raised)}
+.natfxrow.past{opacity:.94}
 /* Venue chip -- a small H/A square, home tinted crimson, away neutral. */
 .natfxven{flex:none;width:20px;height:20px;border-radius:6px;display:grid;
   place-items:center;font:800 10px/1 var(--sans)}
 .natfxven.h{background:rgba(210,30,60,.14);color:var(--red)}
-.natfxven.a{background:var(--raised);color:var(--ink-2)}
+.natfxven.a{background:var(--surface);color:var(--ink-2);border:1px solid var(--line)}
 .natfxven.none{background:transparent}
 :root[data-theme="light"] .natfxven.h{color:var(--red)}
 .natfxmid{min-width:0}
 .natfxopp{display:flex;align-items:center;gap:7px;min-width:0}
 .natfxcrest{width:18px;height:18px;object-fit:contain;flex:none}
 .natfxcrest.ini{display:inline-flex;align-items:center;justify-content:center;
-  border-radius:4px;background:var(--raised);border:1px solid var(--line);
+  border-radius:4px;background:var(--surface);border:1px solid var(--line);
   font:800 8px/1 var(--sans);color:var(--mut)}
-.natfxopp b{font:700 13.5px/1.2 var(--sans);white-space:nowrap;overflow:hidden;
+.natfxopp b{font:700 13px/1.2 var(--sans);white-space:nowrap;overflow:hidden;
   text-overflow:ellipsis}
-.natfxmeta{display:block;font-size:11px;color:var(--mut);margin-top:2px;
+.natfxmeta{display:block;font-size:10.5px;color:var(--mut);margin-top:2px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   font-variant-numeric:tabular-nums}
 /* Result pill, coloured from Egypt's side: win green, draw amber, loss red. */
@@ -300,11 +307,11 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;min-width:940px}
    a past result are never read as the same thing. "Upcoming" in crimson (the thing
    the reader came for), "Recent results" and "No match scheduled" muted. */
 .natfxsub{font:700 9px/1 var(--sans);letter-spacing:.11em;text-transform:uppercase;
-  margin:13px 0 7px;color:var(--mut)}
-.natfxsub:first-of-type{margin-top:9px}
+  margin:14px 0 8px;color:var(--mut)}
+.natfxsub:first-of-type{margin-top:11px}
 .natfxsub.up{color:var(--red)}
 .natfxsub.none{color:var(--mut)}
-@media(max-width:620px){ .natfxgrid{grid-template-columns:1fr} }
+@media(max-width:620px){ .natfxrow{flex:1 1 100%;max-width:none} }
 
 .tag{display:inline-block;font:700 9.5px/1 var(--sans);letter-spacing:.05em;
   padding:4px 8px;border-radius:5px;white-space:nowrap;text-transform:uppercase}

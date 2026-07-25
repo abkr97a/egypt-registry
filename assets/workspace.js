@@ -1453,10 +1453,10 @@ function drawNatFixtures(){
     const rec=(t.recent||[]).slice(0,5);
     const crest=CRESTS[t.sid]?`<img class="cc" src="${esc(CRESTS[t.sid])}" alt="" loading="lazy">`:"";
     const upHTML=up.length
-      ? `<div class="natfxsub up">Upcoming</div>${up.map(f=>natMatchRow(f,false)).join("")}`
+      ? `<div class="natfxsub up">Upcoming</div><div class="natfxruns">${up.map(f=>natMatchRow(f,false)).join("")}</div>`
       : `<div class="natfxsub none">No match scheduled</div>`;
     const recHTML=rec.length
-      ? `<div class="natfxsub past">Recent results</div>${rec.map(f=>natMatchRow(f,true)).join("")}`
+      ? `<div class="natfxsub past">Recent results</div><div class="natfxruns">${rec.map(f=>natMatchRow(f,true)).join("")}</div>`
       : "";
     return `<div class="natfxteam">
       <div class="natfxth">${crest}<b>${esc(t.name)}</b></div>
