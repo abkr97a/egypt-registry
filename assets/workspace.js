@@ -15,7 +15,7 @@ const num=v=>{const n=parseInt(v,10);return isNaN(n)?0:n;};
 const S={view:"roster",q:"",sort:"name",dir:1,fxsort:"date",fxdir:1,fxview:"list",
          // Scouting defaults to most-played first: the table exists to rank, and
          // an unsorted list makes the reader do the ranking.
-         scsort:"played",scdir:-1,sel:null,onlySaved:false,
+         scsort:"played",scdir:-1,scflat:false,sel:null,onlySaved:false,
          f:{based:new Set(),track:new Set(),region:new Set(),club:new Set(),caps:new Set(),pos:new Set(),age:new Set(),form:new Set()}};
 // A player between clubs is available now and needs no fee — the single most
 // actionable state in the dossier, and previously only findable by searching the
@@ -1512,26 +1512,48 @@ function drawScouting(){
     // Name ties broken by name so the order is stable between redraws.
     return (c||String(a.name).localeCompare(String(b.name)))*S.scdir;
   });
-  $("body").innerHTML=`<div class="sclegend">
+  const legend=`<div class="sclegend">
       <span><i class="P"></i>played</span><span><i class="B"></i>benched</span>
       <span><i class="O"></i>not in squad</span>
       <span><i class="P hit">★</i>scored or assisted</span>
       <span><i class="P cs">✓</i>clean sheet (GK &amp; defenders)</span>
       <span><i class="P prev"></i>another club</span>
-      <span>oldest → newest · hover a block for the match, score and minutes</span></div>`
-    +SCGRP.map(([k,label])=>{
-      const g=list.filter(p=>posOf(p)===k);
-      if(!g.length)return "";
-      return `<div class="scgrp"><div class="ntgh"><b>${esc(label)}</b><span>${g.length}</span></div>
-        <table class="grid sctbl">${cols}${head}<tbody>${scsort(g).map(row).join("")}</tbody></table></div>`;
-    }).join("");
-  // Every group's header row carries the same keys, so one handler serves all
-  // four tables.
+      <span>oldest → newest · hover a block for the match, score and minutes</span></div>`;
+
+  // Grouped by position by default -- comparing a keeper's minutes to a winger's
+  // is what the grouping exists to prevent. But sorting on a column is a request
+  // to rank EVERYONE by it, which the per-group sort cannot do: "who played most
+  // recently" spanned four separate tables. So a column sort flattens into one
+  // table across all positions; a toggle switches back to grouped.
+  const modes=`<div class="scmode">
+      <button data-scg="1"${S.scflat?"":' class="on"'}>By position</button>
+      <button data-scg="0"${S.scflat?' class="on"':""}>One list</button>
+    </div>`;
+
+  if(S.scflat){
+    $("body").innerHTML=legend+modes
+      +`<table class="grid sctbl">${cols}${head}<tbody>${scsort(list).map(row).join("")}</tbody></table>`;
+  }else{
+    $("body").innerHTML=legend+modes
+      +SCGRP.map(([k,label])=>{
+        const g=list.filter(p=>posOf(p)===k);
+        if(!g.length)return "";
+        return `<div class="scgrp"><div class="ntgh"><b>${esc(label)}</b><span>${g.length}</span></div>
+          <table class="grid sctbl">${cols}${head}<tbody>${scsort(g).map(row).join("")}</tbody></table></div>`;
+      }).join("");
+  }
+
+  // Clicking a column header sorts AND flattens -- a sort is a cross-position
+  // ranking, so it drops the grouping to make one ordered list.
   $("body").querySelectorAll("th[data-sc]").forEach(th=>th.onclick=()=>{
     const k=th.dataset.sc;
-    // Same column toggles direction; a new column starts descending, because the
-    // question is nearly always "who is at the top".
-    if(S.scsort===k)S.scdir=-S.scdir; else {S.scsort=k;S.scdir=k==="name"?1:-1;}
+    if(S.scsort===k&&S.scflat)S.scdir=-S.scdir; else {S.scsort=k;S.scdir=k==="name"?1:-1;}
+    S.scflat=true;
+    drawScouting();
+  });
+  // The By position / One list toggle.
+  $("body").querySelectorAll("[data-scg]").forEach(b=>b.onclick=()=>{
+    S.scflat=b.dataset.scg==="0";
     drawScouting();
   });
   wireRows();
