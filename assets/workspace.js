@@ -1025,12 +1025,15 @@ function drawNav(){
     ["scout","Scouting",withMatch,"Squad status across the last ten club matchdays"],
     ["fix","Fixtures",withFix,"Next match for each player's club"],
     ["nat","National",withNat,"National-team appearances and what they mean for eligibility"],
+    // The game. No count — it is not a cut of the registry, it is a blank pitch to
+    // fill — so it carries a star instead, marking it as the one view that is play.
+    ["build","⚽ Build XI","","Pick your dream Egypt XI from the eligible pool and share it"],
     // Last, and only once something is in it. An always-visible "My list 0" is a
     // permanent reminder of an empty box; the star teaches the feature better
     // than a tab nobody has filled.
     ...(SHORT.size?[["mine","My list",SHORT.size,
         "Players you saved — kept in this browser, no account needed"]]:[]),
-  ].map(([k,l,c,t])=>`<button data-v="${k}" title="${esc(t)}"${S.view===k?' class="on"':""}>${esc(l)}<span class="n">${c}</span></button>`).join("");
+  ].map(([k,l,c,t])=>`<button data-v="${k}" title="${esc(t)}"${S.view===k?' class="on"':""}>${esc(l)}${c!==""?`<span class="n">${c}</span>`:""}</button>`).join("");
   $("nav").querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>{
     S.view=b.dataset.v;
     // The nav is a shortcut into the same facet the sidebar exposes, so the two
@@ -1559,7 +1562,280 @@ function drawScouting(){
   wireRows();
 }
 
+/* ---------- view: build your Egypt XI ----------
+   The one view that is play, not work. Pick a formation, fill eleven slots from
+   the eligible pool, share the result as a link. No account, no budget: a dream
+   team, not a scouting exercise. Everything it needs — photos, clubs, values,
+   positions — is already in DATA, so this adds a screen, not a data source.
+
+   The whole XI lives in the URL hash (#build?f=433&xi=id,id,...) so a shared
+   link IS the team. That mirrors the shortlist's ?list= sharing: the same
+   promise, that "send me yours" is a link and nothing is stored server-side. */
+
+// Slot roles the pitch understands, coarser than TM's fifteen position strings.
+// A picker keyed on the exact string would leave "Second Striker" or "Midfield"
+// pickable for nothing, so every TM position maps to one PRIMARY role plus the
+// roles it can reasonably cover — a Left Winger can take either wing, a Central
+// Midfielder can sit as DM or push to AM. The map is generous on purpose: this
+// is a game, and a slot no one can fill is a dead square on the pitch.
+const ROLE_OK={
+  "Goalkeeper":       ["GK"],
+  "Centre-Back":      ["CB","LB","RB"],
+  "Left-Back":        ["LB","CB"],
+  "Right-Back":       ["RB","CB"],
+  "Defender":         ["CB","LB","RB","DM"],
+  "Defensive Midfield":["DM","CM","CB"],
+  "Central Midfield": ["CM","DM","AM"],
+  "Attacking Midfield":["AM","CM","LW","RW"],
+  "Midfield":         ["CM","DM","AM"],
+  "Left Midfield":    ["LW","AM","CM","LB"],
+  "Left Winger":      ["LW","RW","AM","ST"],
+  "Right Winger":     ["RW","LW","AM","ST"],
+  "Second Striker":   ["ST","AM"],
+  "Centre-Forward":   ["ST","AM"],
+  "Attack":           ["ST","LW","RW","AM"],
+};
+// Which players may fill a given slot role. Falls back to the primary bucket so a
+// player whose exact string is missing from the map is never stranded.
+const PRIMARY={Goalkeeper:"GK","Centre-Back":"CB","Left-Back":"LB","Right-Back":"RB",
+  "Defensive Midfield":"DM","Central Midfield":"CM","Attacking Midfield":"AM",
+  "Left Winger":"LW","Right Winger":"RW","Centre-Forward":"ST"};
+function roleFits(p,role){
+  const ok=ROLE_OK[p.position];
+  if(ok)return ok.includes(role);
+  return PRIMARY[p.position]===role;
+}
+
+// Formations as slot layouts. x/y are percentages on the pitch (0,0 = top-left,
+// attack at the top so the GK sits at the bottom like a real team sheet). The
+// role decides who is pickable; the label is what the reader sees on an empty
+// slot. Kept to the four shapes Egypt actually lines up in.
+const FORMS={
+  "433":{name:"4-3-3",slots:[
+    {role:"GK",x:50,y:90},
+    {role:"LB",x:16,y:70},{role:"CB",x:38,y:73},{role:"CB",x:62,y:73},{role:"RB",x:84,y:70},
+    {role:"CM",x:30,y:48},{role:"CM",x:50,y:52},{role:"CM",x:70,y:48},
+    {role:"LW",x:20,y:22},{role:"ST",x:50,y:16},{role:"RW",x:80,y:22}]},
+  "4231":{name:"4-2-3-1",slots:[
+    {role:"GK",x:50,y:90},
+    {role:"LB",x:16,y:70},{role:"CB",x:38,y:73},{role:"CB",x:62,y:73},{role:"RB",x:84,y:70},
+    {role:"DM",x:36,y:54},{role:"DM",x:64,y:54},
+    {role:"LW",x:20,y:34},{role:"AM",x:50,y:38},{role:"RW",x:80,y:34},
+    {role:"ST",x:50,y:14}]},
+  "442":{name:"4-4-2",slots:[
+    {role:"GK",x:50,y:90},
+    {role:"LB",x:16,y:70},{role:"CB",x:38,y:73},{role:"CB",x:62,y:73},{role:"RB",x:84,y:70},
+    {role:"LW",x:16,y:46},{role:"CM",x:38,y:49},{role:"CM",x:62,y:49},{role:"RW",x:84,y:46},
+    {role:"ST",x:38,y:18},{role:"ST",x:62,y:18}]},
+  "352":{name:"3-5-2",slots:[
+    {role:"GK",x:50,y:90},
+    {role:"CB",x:28,y:73},{role:"CB",x:50,y:75},{role:"CB",x:72,y:73},
+    {role:"LB",x:12,y:50},{role:"CM",x:35,y:52},{role:"CM",x:50,y:55},{role:"CM",x:65,y:52},{role:"RB",x:88,y:50},
+    {role:"ST",x:38,y:18},{role:"ST",x:62,y:18}]},
+};
+const ROLE_LABEL={GK:"Goalkeeper",CB:"Centre-back",LB:"Left-back",RB:"Right-back",
+  DM:"Defensive mid",CM:"Central mid",AM:"Attacking mid",LW:"Left wing",RW:"Right wing",ST:"Striker"};
+
+// The build state. xi maps slot index -> tm_id; nothing is persisted server-side,
+// but the last team is remembered in this browser so a refresh does not wipe the
+// pitch. The URL hash always wins over the cache when present.
+const BUILD_KEY="reg-build";
+const B={form:"433",xi:{},pickSlot:null};
+function buildLoad(){
+  try{const raw=localStorage.getItem(BUILD_KEY);if(raw){const d=JSON.parse(raw);
+    if(FORMS[d.form])B.form=d.form;
+    if(d.xi&&typeof d.xi==="object")B.xi=d.xi;}}catch(_){}
+}
+function buildSave(){
+  try{localStorage.setItem(BUILD_KEY,JSON.stringify({form:B.form,xi:B.xi}));}catch(_){}
+}
+// Encode the pitch into the hash. Slot order is the formation's own order, so the
+// same team on the same formation always round-trips. Empty slots are a bare
+// comma, which decode reads as "unfilled" — a link to a half-built team still works.
+function buildHash(){
+  const ids=FORMS[B.form].slots.map((_,i)=>B.xi[i]||"");
+  return "#build?f="+B.form+"&xi="+ids.join(",");
+}
+function buildShareURL(){ return location.origin+location.pathname+buildHash(); }
+// Read a #build hash into B. Returns true if it carried a team, so boot knows to
+// open the view. Unknown ids are dropped rather than shown as blanks the reader
+// cannot explain — the same rule the ?list= import uses.
+function buildFromHash(){
+  const h=location.hash||"";
+  if(!h.startsWith("#build"))return false;
+  const qs=new URLSearchParams(h.slice(h.indexOf("?")+1));
+  const f=qs.get("f");
+  if(FORMS[f])B.form=f;
+  const known=new Set(DATA.map(p=>p.tm_id));
+  const ids=(qs.get("xi")||"").split(",");
+  const xi={};
+  ids.forEach((id,i)=>{ if(id&&known.has(id))xi[i]=id; });
+  B.xi=xi;
+  return true;
+}
+// A team on a formation whose slots the picks no longer fit (switched 4-3-3 -> 3-5-2)
+// keeps every pick that still fits its new slot's role and drops the rest, rather
+// than clearing the pitch. Same player, same square where the square survives.
+function reflowForm(newForm){
+  const oldSlots=FORMS[B.form].slots, newSlots=FORMS[newForm].slots;
+  const next={};
+  const used=new Set();
+  // First pass: same index, same role -> keep in place.
+  newSlots.forEach((s,i)=>{
+    const id=B.xi[i];
+    if(id&&oldSlots[i]&&oldSlots[i].role===s.role){next[i]=id;used.add(id);}
+  });
+  // Second pass: rehome the rest into any free slot whose role the player fits.
+  Object.entries(B.xi).forEach(([i,id])=>{
+    if(used.has(id))return;
+    const p=byId(id); if(!p)return;
+    for(let j=0;j<newSlots.length;j++){
+      if(next[j])continue;
+      if(roleFits(p,newSlots[j].role)){next[j]=id;used.add(id);break;}
+    }
+  });
+  B.form=newForm; B.xi=next; buildSave();
+}
+const byId=id=>DATA.find(p=>p.tm_id===id);
+
+function drawBuild(){
+  const form=FORMS[B.form];
+  const filled=form.slots.filter((_,i)=>B.xi[i]).length;
+  const total=form.slots.length;
+  const value=form.slots.reduce((s,_,i)=>{
+    const p=B.xi[i]&&byId(B.xi[i]); return s+(p?num(p.market_value_eur):0);
+  },0);
+  $("count").innerHTML=`${filled}<small>of ${total} picked</small>`;
+
+  const opts=Object.entries(FORMS).map(([k,f])=>
+    `<option value="${k}"${B.form===k?" selected":""}>${esc(f.name)}</option>`).join("");
+
+  // Each slot is either a filled tile (face, name, value) or an empty prompt
+  // showing the role it wants. Positioned by percentage over the pitch.
+  const slots=form.slots.map((s,i)=>{
+    const id=B.xi[i], p=id&&byId(id);
+    const sel=B.pickSlot===i?" picking":"";
+    if(p){
+      const face=p.photo?`<img class="bface" src="${esc(p.photo)}" alt="" loading="lazy">`
+                        :`<span class="bface ini">${esc(initials(p.name))}</span>`;
+      const last=p.name.split(/\s+/).slice(-1)[0];
+      return `<button class="slot filled${sel}" data-slot="${i}" style="left:${s.x}%;top:${s.y}%"
+          title="${esc(p.name)} — ${esc(ROLE_LABEL[s.role])}">
+        ${face}
+        <span class="bname">${esc(last)}</span>
+        <span class="bmv">${esc(p.mv_now||"—")}</span>
+        <span class="bx" data-clear="${i}" title="Remove">×</span></button>`;
+    }
+    return `<button class="slot empty${sel}" data-slot="${i}" style="left:${s.x}%;top:${s.y}%">
+        <span class="bplus">+</span><span class="brole">${esc(ROLE_LABEL[s.role])}</span></button>`;
+  }).join("");
+
+  const valStr=value>=1e6?"€"+(value/1e6).toFixed(0)+"m":value>=1e3?"€"+Math.round(value/1e3)+"k":"€0";
+  $("body").innerHTML=`
+    <div class="build">
+      <div class="buildbar">
+        <label class="bfield">Formation
+          <select id="bform">${opts}</select></label>
+        <div class="bstat"><span>Squad value</span><b>${valStr}</b></div>
+        <div class="bstat"><span>Picked</span><b>${filled} / ${total}</b></div>
+        <div class="bactions">
+          <button class="bbtn" id="bshare"${filled?"":" disabled"}>Share XI</button>
+          <button class="bbtn ghost" id="bclear"${filled?"":" disabled"}>Clear</button>
+        </div>
+      </div>
+      <div class="pitchwrap">
+        <div class="pitch" id="pitch">
+          <div class="pitch-lines" aria-hidden="true"></div>
+          ${slots}
+        </div>
+      </div>
+      <p class="buildnote">Pick anyone eligible for Egypt — dual or single nationality, at home or abroad.
+        Tap a slot to choose. Your team lives in this browser and in the share link; no account needed.</p>
+    </div>
+    <div class="pickwrap" id="pickwrap" hidden></div>`;
+
+  $("bform").onchange=e=>{ reflowForm(e.target.value); B.pickSlot=null; drawBuild(); };
+  const sh=$("bshare"); if(sh)sh.onclick=shareBuild;
+  const cl=$("bclear"); if(cl)cl.onclick=()=>{
+    B.xi={}; B.pickSlot=null; buildSave();
+    history.replaceState(null,"",location.pathname); drawBuild();
+  };
+  $("pitch").querySelectorAll("[data-slot]").forEach(b=>b.onclick=e=>{
+    if(e.target.dataset.clear!=null){
+      delete B.xi[+e.target.dataset.clear]; buildSave(); drawBuild(); return;
+    }
+    B.pickSlot=+b.dataset.slot; drawBuild(); openPicker();
+  });
+  if(B.pickSlot!=null)openPicker();
+}
+
+// The slot picker: every player who fits the chosen slot's role, searchable,
+// value-sorted so the marquee names surface first. A player already on the pitch
+// is shown as "picked" and, if chosen again, simply moves to the new slot — you
+// cannot field the same man twice.
+function openPicker(){
+  const i=B.pickSlot; if(i==null)return;
+  const role=FORMS[B.form].slots[i].role;
+  const wrap=$("pickwrap"); if(!wrap)return;
+  const onPitch=new Set(Object.values(B.xi));
+  const q=(B.pickQ||"").toLowerCase();
+  let list=DATA.filter(p=>roleFits(p,role));
+  if(q)list=list.filter(p=>(p.name+" "+(p.club||"")).toLowerCase().includes(q));
+  list.sort((a,b)=>num(b.market_value_eur)-num(a.market_value_eur));
+  const rows=list.slice(0,80).map(p=>{
+    const here=onPitch.has(p.tm_id);
+    const face=p.photo?`<img class="pface" src="${esc(p.photo)}" alt="" loading="lazy">`
+                      :`<span class="pface ini">${esc(initials(p.name))}</span>`;
+    const crest=CRESTS[p.club_id]?`<img class="cc" src="${esc(CRESTS[p.club_id])}" alt="">`:"";
+    return `<button class="pkrow${here?" here":""}" data-pid="${esc(p.tm_id)}">
+      ${face}
+      <span class="pinfo"><b>${esc(p.name)}</b>
+        <small>${esc(p.position||"")} · ${crest}${isFree(p)?"Free agent":esc(p.club||"—")}</small></span>
+      <span class="pmv">${esc(p.mv_now||"—")}</span>
+      ${here?'<span class="ptag">On pitch</span>':""}</button>`;
+  }).join("");
+  wrap.hidden=false;
+  wrap.innerHTML=`
+    <div class="pickscrim" id="pickscrim"></div>
+    <div class="pickbox" role="dialog" aria-label="Choose a player">
+      <div class="pickhead">
+        <div><b>Choose a ${esc(ROLE_LABEL[role].toLowerCase())}</b>
+          <small>${list.length} eligible${q?" · filtered":""}</small></div>
+        <button class="pickx" id="pickx" aria-label="Close">×</button>
+      </div>
+      <input class="picksearch" id="picksearch" type="search"
+        placeholder="Search player or club…" value="${esc(B.pickQ||"")}">
+      <div class="picklist">${rows||'<div class="pickempty">No eligible player matches.</div>'}</div>
+    </div>`;
+  const close=()=>{ B.pickSlot=null; B.pickQ=""; wrap.hidden=true; wrap.innerHTML=""; drawBuild(); };
+  $("pickscrim").onclick=close;
+  $("pickx").onclick=close;
+  const search=$("picksearch");
+  search.oninput=e=>{ B.pickQ=e.target.value; openPicker(); $("picksearch").focus(); };
+  search.focus();
+  wrap.querySelectorAll("[data-pid]").forEach(b=>b.onclick=()=>{
+    const pid=b.dataset.pid;
+    // One man, one shirt: if he is already on the pitch, vacate his old slot first.
+    for(const k of Object.keys(B.xi))if(B.xi[k]===pid)delete B.xi[k];
+    B.xi[i]=pid; buildSave();
+    B.pickSlot=null; B.pickQ=""; wrap.hidden=true; wrap.innerHTML=""; drawBuild();
+  });
+}
+
+// Share writes the hash into the address bar and copies the full link. No modal:
+// the button becomes its own confirmation, exactly like the shortlist's copy.
+function shareBuild(){
+  const url=buildShareURL();
+  history.replaceState(null,"",buildHash());
+  const btn=$("bshare"); if(!btn)return;
+  const done=()=>{ btn.textContent="Link copied"; setTimeout(()=>{btn.textContent="Share XI";},1600); };
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(done).catch(()=>{ prompt("Copy your XI link:",url); });
+  }else{ prompt("Copy your XI link:",url); }
+}
+
 function drawBody(){
+  if(S.view==="build")return drawBuild();
   if(S.view==="fix")return drawFixtures();
   if(S.view==="nat")return drawNational();
   if(S.view==="scout")return drawScouting();
@@ -1727,6 +2003,15 @@ async function boot(){
     // reflects what is actually shown.
     history.replaceState(null,"",location.pathname);
   }
+
+  // The squad builder. A #build link IS a team, so it wins over the browser's
+  // remembered pitch; without one, restore whatever was last built here. Opening
+  // a shared link drops the reader straight onto the pitch it describes.
+  buildLoad();
+  if(location.hash.startsWith("#build")){
+    if(buildFromHash())S.view="build";
+  }
+
   draw();
 
   $("q").oninput=e=>{S.q=e.target.value;drawBody();drawFilters();};

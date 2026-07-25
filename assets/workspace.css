@@ -750,3 +750,130 @@ td.sides>.sidesw{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
   .count{display:none}
   .search{flex:1 1 auto;min-width:110px}
 }
+
+/* ---------- build your XI (the game) ----------
+   A real pitch, not a table. The green is its own surface -- deliberately not a
+   token, because it must read as grass in both themes -- with the workspace's
+   crimson used only for the accents (the top rule, the picked-slot ring) so the
+   game still belongs to the site. Slots are absolutely positioned by percentage,
+   so the same markup lays out every formation. */
+.build{padding:18px 20px 8px;max-width:760px;margin:0 auto}
+.buildbar{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-bottom:16px}
+.bfield{display:flex;flex-direction:column;gap:4px;font:700 9.5px/1 var(--sans);
+  letter-spacing:.13em;text-transform:uppercase;color:var(--mut)}
+.bfield select{font:700 14px/1 var(--sans);letter-spacing:0;text-transform:none;
+  color:var(--ink);background:var(--surface);border:1px solid var(--line-2);
+  border-radius:8px;padding:8px 10px;cursor:pointer}
+.bfield select:focus{outline:none;border-color:var(--red)}
+.bstat{display:flex;flex-direction:column;gap:3px}
+.bstat span{font:700 9.5px/1 var(--sans);letter-spacing:.13em;text-transform:uppercase;color:var(--mut)}
+.bstat b{font:800 16px/1 var(--sans);font-variant-numeric:tabular-nums}
+.bactions{margin-left:auto;display:flex;gap:8px}
+.bbtn{padding:9px 15px;border-radius:9px;border:1px solid transparent;
+  background:var(--red);color:#fff;font:700 13px/1 var(--sans);cursor:pointer}
+.bbtn:hover{background:var(--red-dim)}
+.bbtn.ghost{background:transparent;border-color:var(--line-2);color:var(--ink-2)}
+.bbtn.ghost:hover{border-color:var(--red);color:var(--red);background:transparent}
+.bbtn:disabled{opacity:.4;cursor:default;background:var(--red)}
+.bbtn.ghost:disabled{background:transparent}
+
+.pitchwrap{border-radius:16px;overflow:hidden;box-shadow:var(--shadow);
+  border-top:3px solid var(--red)}
+/* The grass. Two greens in soft horizontal bands (mow stripes) plus a vignette,
+   painted with gradients so there is no image to load past the CSP. */
+.pitch{position:relative;width:100%;padding-top:132%;
+  background:
+    radial-gradient(120% 90% at 50% 0%,rgba(255,255,255,.06),transparent 60%),
+    repeating-linear-gradient(0deg,#1f7a46 0 9%,#1c7040 9% 18%);
+}
+:root[data-theme="light"] .pitch{
+  background:
+    radial-gradient(120% 90% at 50% 0%,rgba(255,255,255,.10),transparent 60%),
+    repeating-linear-gradient(0deg,#2f9a5c 0 9%,#2a8f54 9% 18%);
+}
+/* White markings: outer box, halfway line, centre circle, both penalty areas.
+   One element, drawn entirely with borders and gradients. */
+.pitch-lines{position:absolute;inset:3.5%;border:2px solid rgba(255,255,255,.5);
+  border-radius:3px;pointer-events:none}
+.pitch-lines::before{content:"";position:absolute;left:0;right:0;top:50%;
+  height:0;border-top:2px solid rgba(255,255,255,.5)}
+.pitch-lines::after{content:"";position:absolute;left:50%;top:50%;
+  width:22%;padding-top:22%;transform:translate(-50%,-50%);
+  border:2px solid rgba(255,255,255,.5);border-radius:50%}
+
+.slot{position:absolute;transform:translate(-50%,-50%);display:flex;
+  flex-direction:column;align-items:center;gap:2px;cursor:pointer;
+  background:transparent;border:0;width:76px}
+.slot.empty{gap:4px}
+.bplus{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;
+  font:300 26px/1 var(--sans);color:rgba(255,255,255,.9);
+  background:rgba(0,0,0,.28);border:2px dashed rgba(255,255,255,.55)}
+.slot.empty:hover .bplus{background:rgba(0,0,0,.42);border-color:#fff}
+.brole{font:700 9px/1.1 var(--sans);letter-spacing:.04em;color:#fff;
+  text-shadow:0 1px 2px rgba(0,0,0,.6);text-align:center;text-transform:uppercase}
+.bface{width:52px;height:52px;border-radius:50%;object-fit:cover;
+  border:2px solid #fff;background:#0b3d23;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.bface.ini{display:inline-flex;align-items:center;justify-content:center;
+  font:800 16px/1 var(--sans);color:#fff}
+.slot.filled:hover .bface{border-color:var(--gold)}
+.slot.picking .bface,.slot.picking .bplus{border-color:var(--red-soft);
+  box-shadow:0 0 0 3px rgba(210,30,60,.5)}
+.bname{max-width:76px;font:800 11px/1.1 var(--sans);color:#fff;text-align:center;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  background:rgba(0,0,0,.45);padding:2px 6px;border-radius:4px;text-shadow:0 1px 1px rgba(0,0,0,.5)}
+.bmv{font:700 9.5px/1 var(--sans);color:#ffe9b0;text-shadow:0 1px 2px rgba(0,0,0,.7);
+  font-variant-numeric:tabular-nums}
+.bx{position:absolute;top:-4px;right:2px;width:18px;height:18px;border-radius:50%;
+  background:var(--red);color:#fff;font:700 13px/16px var(--sans);text-align:center;
+  border:1.5px solid #fff;opacity:0;transition:opacity .1s}
+.slot.filled:hover .bx{opacity:1}
+
+.buildnote{max-width:56ch;margin:14px auto 0;text-align:center;color:var(--mut);
+  font-size:12.5px;line-height:1.6}
+
+/* Picker: same modal grammar as the player panel -- scrim + boxed sheet -- but a
+   compact, value-sorted list scoped to the slot's role. */
+.pickwrap{position:fixed;inset:0;z-index:60}
+.pickscrim{position:absolute;inset:0;background:rgba(0,0,0,.5)}
+.pickbox{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:min(440px,92vw);max-height:82vh;display:flex;flex-direction:column;
+  background:var(--surface);border:1px solid var(--line-2);border-radius:14px;
+  box-shadow:var(--shadow);overflow:hidden}
+.pickhead{display:flex;align-items:flex-start;justify-content:space-between;
+  gap:12px;padding:15px 16px 10px;border-top:3px solid var(--red)}
+.pickhead b{display:block;font-size:15px}
+.pickhead small{display:block;color:var(--mut);font-size:12px;margin-top:2px}
+.pickx{flex:none;width:30px;height:30px;border-radius:8px;border:1px solid var(--line-2);
+  background:transparent;color:var(--ink-2);font:400 20px/1 var(--sans);cursor:pointer}
+.pickx:hover{border-color:var(--red);color:var(--red)}
+.picksearch{margin:0 16px 10px;padding:9px 12px;border-radius:9px;
+  border:1px solid var(--line-2);background:var(--bg);color:var(--ink);font-size:13px;outline:none}
+.picksearch:focus{border-color:var(--red)}
+.picklist{overflow-y:auto;padding:0 8px 10px}
+.pkrow{display:flex;align-items:center;gap:11px;width:100%;text-align:left;
+  padding:8px 9px;border:0;border-radius:10px;background:transparent;cursor:pointer}
+.pkrow:hover{background:var(--raised)}
+.pkrow.here{opacity:.85}
+.pface{width:38px;height:38px;border-radius:9px;object-fit:cover;flex:none;
+  background:var(--raised);border:1px solid var(--line)}
+.pface.ini{display:inline-flex;align-items:center;justify-content:center;
+  font:800 13px/1 var(--sans);color:var(--mut)}
+.pinfo{min-width:0;flex:1 1 auto;text-align:left}
+.pinfo b{display:block;text-align:left;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pinfo small{display:block;color:var(--mut);font-size:11.5px;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.pinfo .cc{width:14px;height:14px;vertical-align:-3px;margin-right:4px}
+.pmv{flex:none;font:800 12.5px/1 var(--sans);font-variant-numeric:tabular-nums;color:var(--ink-2)}
+.ptag{flex:none;font:700 9px/1 var(--sans);letter-spacing:.05em;text-transform:uppercase;
+  color:var(--up);border:1px solid var(--up);border-radius:5px;padding:3px 5px;margin-left:2px}
+.pickempty{padding:30px 16px;text-align:center;color:var(--mut);font-size:13px}
+
+@media(max-width:620px){
+  .build{padding:14px 12px 8px}
+  .buildbar{gap:12px}
+  .bactions{margin-left:0;width:100%}
+  .slot{width:60px}
+  .bface{width:44px;height:44px}
+  .bplus{width:38px;height:38px}
+  .bname{max-width:60px;font-size:10px}
+}
