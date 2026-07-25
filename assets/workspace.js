@@ -2,20 +2,7 @@
    Table-first, filters persistent, detail in a side panel so a scout working
    through 152 players never loses their place in the list. */
 
-let DATA=[],MSTATS={},CRESTS={},NEXTM={},NATIDS={},EGY1=new Set(),LINEUPS={};
-
-// Position order for a team sheet: keeper, defence, midfield, attack. TM's
-// specific labels map onto these four bands. A player whose position we do not
-// recognise sorts last rather than vanishing.
-const POS_BAND=p=>{
-  const s=(p||"").toLowerCase();
-  if(s.includes("keeper"))return 0;
-  if(s.includes("back")||s==="defender")return 1;
-  if(s.includes("midfield"))return 2;
-  if(s.includes("wing")||s.includes("forward")||s.includes("strik")||s.includes("attack"))return 3;
-  return 4;
-};
-const BAND_NAME=["Goalkeeper","Defence","Midfield","Attack","—"];
+let DATA=[],MSTATS={},CRESTS={},NEXTM={},NATIDS={};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const initials=n=>(n||"?").split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase();
@@ -26,10 +13,6 @@ const num=v=>{const n=parseInt(v,10);return isNaN(n)?0:n;};
 // questions, and carrying one sort across both meant opening Fixtures showed them
 // alphabetically when the only useful order is who plays soonest.
 const S={view:"roster",q:"",sort:"name",dir:1,fxsort:"date",fxdir:1,fxview:"list",
-         // Fixtures splits in two: the match just PLAYED and the one COMING.
-         // "next" first because a scout planning to watch someone cares about
-         // the upcoming game; "last" is the result they may have missed.
-         fxtab:"next",
          // Scouting defaults to most-played first: the table exists to rank, and
          // an unsorted list makes the reader do the ranking.
          scsort:"played",scdir:-1,sel:null,onlySaved:false,
@@ -1004,7 +987,7 @@ function openPanel(id){
 }
 function closePanel(){
   S.sel=null;
-  $("panel").classList.remove("open","wide");
+  $("panel").classList.remove("open");
   $("scrim").classList.remove("on");
   drawBody();
 }
@@ -1110,7 +1093,7 @@ function egyptFixtures(list){
         +(c.players.length>6?` +${c.players.length-6} more`:"");
       return `<tr>
         <td><b>${crest}${esc(c.club)}</b><small class="cn">${esc(names)}</small></td>
-        <td class="hide-s"><b>${koDate(c.fx)}</b><small class="cn">${koTime(c.fx)}</small></td>
+        <td class="hide-s"><b>${esc(c.fx.date||"—")}</b><small class="cn">${koTime(c.fx)}</small></td>
         <td>${c.fx.ha==="H"?'<span class="tag">Home</span>':'<span class="tag">Away</span>'} ${ocrest}${esc(c.fx.opp||"—")}</td>
         <td class="r num">${c.players.length}</td></tr>`;
     }).join("")}</tbody></table>`;
@@ -1138,38 +1121,11 @@ const DAY=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
    derives from f.utc; f.time is only a fallback for a fixture scraped before
    the utc field existed, and is marked in the UI when used. */
 const CAIRO="Africa/Cairo";
-
-// The last match a player actually PLAYED, for the Fixtures "Last" tab. It is
-// the newest form row he was on the pitch for -- form[] is newest-first, and a
-// row with a score is one that has been played. Not a benched or missed game: a
-// scout asking "how did his last match go" means the last one he was IN.
-//
-// This lives in the form data already; NEXTM only holds the upcoming fixture.
-// That is why a stale NEXTM could show a match as "next" while the same match
-// sat in Scouting as played -- they read different files.
-function lastMatch(p){
-  const form=(MSTATS[p.tm_id]||{}).form||[];
-  return form.find(f=>f.part==="P"&&(f.min||0)>0&&f.sc)||null;
-}
-
 const koTime=f=>{
   if(!f||!f.utc)return f&&f.time?esc(f.time):"";
   const d=new Date(f.utc);
   return isNaN(d)?"":d.toLocaleTimeString("en-GB",
     {timeZone:CAIRO,hour:"2-digit",minute:"2-digit",hour12:false});
-};
-// The kickoff DATE in Cairo, for the list. The list showed f.date -- the raw
-// scraped US date -- while the calendar groups by Cairo date, so a late kickoff
-// disagreed: Abdellatif Aboukoura's 7pm US-Eastern match is 02:00 the NEXT day
-// in Cairo, and the list said 25 while the calendar said 26. The times are shown
-// in Cairo, so the dates must be too, or the two views contradict each other on
-// the same fixture. Falls back to the scraped string only when there is no utc.
-const koDate=f=>{
-  if(!f)return"—";
-  if(f.utc){const d=new Date(f.utc);
-    if(!isNaN(d))return d.toLocaleDateString("en-GB",
-      {timeZone:CAIRO,day:"numeric",month:"short",year:"numeric"});}
-  return esc(f.date||"—");
 };
 // The Cairo calendar date. A late kickoff can land on a different DAY in Cairo
 // than at the venue, so grouping must use the same zone the times are shown in
@@ -1253,16 +1209,7 @@ function agendaHTML(list){
   }).join("");
 }
 
-// The two Fixtures tabs. Rendered once at the top of the view; the rest of the
-// view keys off S.fxtab.
-function fxTabs(nNext,nLast){
-  const t=(k,label,n)=>`<button data-fxt="${k}"${S.fxtab===k?' class="on"':""}>${label}`
-    +`<span class="n">${n}</span></button>`;
-  return `<div class="fxtabs">${t("next","Next fixture",nNext)}${t("last","Last result",nLast)}</div>`;
-}
-
 function drawFixtures(){
-  if(S.fxtab==="last")return drawLastResults();
   // A free agent has no next match. The fixture stored against him belongs to
   // the club he LEFT -- Adam Tolba was listed as away at Holzheimer SG on 15 Aug
   // while being a free agent, which is his old side's fixture and tells a scout
@@ -1308,7 +1255,7 @@ function drawFixtures(){
       <td><span class="who">${p.photo?`<img class="face" src="${esc(p.photo)}" alt="" loading="lazy">`
         :`<span class="face ini">${esc(initials(p.name))}</span>`}<span class="nm"><b>${esc(p.name)}</b>
         <span>${ownc}${esc(p.club||"")}${p.plays_in?` · ${esc(p.plays_in)}`:""}</span></span></span></td>
-      <td class="hide-s"><b>${koDate(f)}</b><small class="cn">${koTime(f)}</small></td>
+      <td class="hide-s"><b>${esc(f.date||"—")}</b><small class="cn">${koTime(f)}</small></td>
       <td>${f.ha==="H"?'<span class="tag">Home</span>':f.ha==="A"?'<span class="tag">Away</span>':""} ${crest}${esc(f.opp||"—")}
         ${f.comp?`<small class="cn">${esc(f.comp)}</small>`:""}</td>
       <td class="hide-s">${strip}</td>
@@ -1353,9 +1300,7 @@ function drawFixtures(){
     ? `<div class="fxgrp"><div class="ntgh"><b>Egyptian league — no dates yet</b><span>${egyPending.length} club${egyPending.length===1?"":"s"}</span></div>
         <p class="ntnote">Transfermarkt has not published this season's Egyptian fixtures. Their players are in the database; only the schedule is missing: ${egyPending.map(esc).join(", ")}.</p></div>`
     : "";
-  const nLast=rows().filter(p=>lastMatch(p)).length;
-  $("body").innerHTML=fxTabs(all.length,nLast)+abroadBlock+egyBlock+pendingBlock;
-  $("body").querySelectorAll("[data-fxt]").forEach(b=>b.onclick=()=>{S.fxtab=b.dataset.fxt;drawFixtures();});
+  $("body").innerHTML=abroadBlock+egyBlock+pendingBlock;
   // querySelectorAll over whatever rendered: with no players abroad there is no
   // sortable header, and this simply wires nothing.
   $("body").querySelectorAll("[data-fxv]").forEach(b=>b.onclick=()=>{
@@ -1592,350 +1537,6 @@ function drawScouting(){
   wireRows();
 }
 
-/* Fixtures · Last result — the match each player most recently PLAYED.
-   Reads the form data, which every other view already uses, so this can never
-   disagree with what Scouting shows about the same match. Sorted newest first,
-   which is what "last" means. */
-// One player's last-result row, for the per-player (abroad) table.
-function lastRow(p){
-  const f=lastMatch(p);
-  const oc=CRESTS[f.oid]?`<img class="cc" src="${esc(CRESTS[f.oid])}" alt="" loading="lazy">`:"";
-  const own=CRESTS[f.sid]||CRESTS[p.club_id];
-  const ownc=own?`<img class="cc" src="${esc(own)}" alt="" loading="lazy">`:"";
-  // W/L/D from the player's own side. sc is written own-team first, verified
-  // across the whole file, so the result never needs a venue flip. A goal or
-  // assist is the one individual fact worth surfacing beside the team result.
-  const res=f.r==="W"?"W":f.r==="L"?"L":"D";
-  const ga=(f.g||f.a)?`<small class="cn">${f.g?f.g+"G":""}${f.g&&f.a?" ":""}${f.a?f.a+"A":""}</small>`:"";
-  return `<tr data-id="${esc(p.tm_id)}">
-    ${starCell(p)}
-    <td><span class="who">${p.photo?`<img class="face" src="${esc(p.photo)}" alt="" loading="lazy">`
-      :`<span class="face ini">${esc(initials(p.name))}</span>`}<span class="nm"><b>${esc(p.name)}</b>
-      <span>${ownc}${esc(p.club||"")}${p.plays_in?` · ${esc(p.plays_in)}`:""}</span></span></span></td>
-    <td class="hide-s"><b>${esc(f.fd||"—")}</b><small class="cn">${esc(f.cn||"")}</small></td>
-    <td>${f.v==="home"?'<span class="tag">Home</span>':f.v==="away"?'<span class="tag">Away</span>':""}
-      ${oc}${esc(f.opp||"—")}</td>
-    <td class="r"><span class="res ${res}">${esc(f.sc||"")}</span></td>
-    <td class="r hide-s">${f.min?f.min+"'":""} ${ga}</td></tr>`;
-}
-
-/* An abroad player's last match, as a card. Abroad, a tracked player is almost
-   always the only Egyptian in his match (117 matches for 127 players), so a
-   squad grouping would make 117 one-man cards. The card is about HIM instead:
-   his face, his result, his minutes and goals -- the diaspora player a scout
-   follows individually. Clicking it opens his profile, not a team sheet. */
-function lastPlayerCard(p){
-  const f=lastMatch(p);
-  const outcome=f.r==="W"?"win":f.r==="L"?"loss":"draw";
-  const face=p.photo?`<img class="face" src="${esc(p.photo)}" alt="" loading="lazy">`
-    :`<span class="face ini">${esc(initials(p.name))}</span>`;
-  const own=CRESTS[f.sid]||CRESTS[p.club_id];
-  const ownc=own?`<img src="${esc(own)}" alt="" loading="lazy">`:`<span class="mcx">${esc(initials(p.club||"?"))}</span>`;
-  const oc=CRESTS[f.oid]?`<img src="${esc(CRESTS[f.oid])}" alt="" loading="lazy">`:`<span class="mcx">${esc(initials(f.opp||"?"))}</span>`;
-  const [a,b]=(f.sc||"-").split("-").map(x=>x.trim());
-  const did=[f.g?`<i class="mg">${f.g}⚽</i>`:"",f.a?`<i class="ma">${f.a} assist${f.a>1?"s":""}</i>`:""]
-    .filter(Boolean).join(" ");
-  return `<article class="mcard pcard ${outcome}" data-id="${esc(p.tm_id)}">
-    <div class="pchead">${face}<div class="pcwho"><b>${esc(p.name)}</b>
-      <span>${esc(p.club||"")}${p.plays_in?` · ${esc(p.plays_in)}`:""}</span></div></div>
-    <div class="mtop">
-      <div class="mcomp">${esc(f.cn||"")}<span>${esc(f.fd||"")}</span></div>
-      <div class="mscore">
-        <div class="mteam h"><span class="mcc">${ownc}</span><b>${esc(f.side||p.club||"—")}</b></div>
-        <div class="mnum"><em>${esc(a||"")}</em><i>–</i><em>${esc(b||"")}</em></div>
-        <div class="mteam a"><span class="mcc">${oc}</span><b>${esc(f.opp||"—")}</b></div>
-      </div>
-    </div>
-    <div class="pcfoot">
-      <span class="pcmin">${f.v==="home"?"Home":f.v==="away"?"Away":""} · ${f.min?f.min+"'":"played"}</span>
-      ${did?`<span class="pcdid">${did}</span>`:""}
-    </div>
-  </article>`;
-}
-
-/* The Egyptian league's last results grouped BY CLUB, the same as the Next tab.
-   One club's match is one row -- 15 Zed FC players all showing "0-2 vs Wadi
-   Degla" was the exact repetition the Next tab already grouped away, and it read
-   the same way here.
-
-   The club fixture is the result shared by every player in the group; who from
-   the squad featured, and any goalscorer, is the per-squad detail that stays on
-   the row. Keyed on club + date + opponent so a squad that played two matches in
-   the window shows both, not one merged row. */
-function egyptLastResults(list){
-  FXGAMES={};   // rebuilt below; the modal reads it by card index
-  // ONE ROW PER MATCH, restricted to the current Egyptian Premier League.
-  //
-  // Two problems this fixes, both reported:
-  //  1. Zamalek vs Cleopatra appeared as TWO rows -- once from each side --
-  //     because the previous version grouped by the club a player featured for.
-  //     A match is one game; it is now one row, keyed on the pair of clubs and
-  //     the date, so both teams' tracked players sit under a single result.
-  //  2. Foreign youth sides, reserve teams and lower divisions (FC Rostov,
-  //     Proxy FC, Dayrout, Liverpool U21) appeared as "clubs", because a
-  //     diaspora player's last game was often for one of them. Only matches
-  //     where at least one side is an EGY1 club (by verein id) are kept.
-  //
-  // Keyed by verein ids, not names: a club renders under several name spellings
-  // across the data, and an id is stable.
-  const EGY1_ON=EGY1.size>0;
-  const byMatch=new Map();
-  list.forEach(p=>{
-    const m=lastMatch(p);
-    const sid=String(m.sid||""), oid=String(m.oid||"");
-    // Keep only matches the player played FOR an EGY1 club. Requiring the
-    // player's own side (sid) to be top-flight -- not merely one of the two
-    // teams -- is what drops the foreign youth and lower-division games: a
-    // diaspora player whose last match was for Proxy FC against an EGY1 side
-    // would otherwise pull Proxy in as the row's club.
-    if(EGY1_ON && !EGY1.has(sid))return;
-    // Match key: the two clubs (order-independent) plus the date, so the same
-    // fixture from either team's feed lands in one bucket.
-    const pair=[sid,oid].sort().join("-");
-    const k=`${pair}|${m.fd}`;
-    if(!byMatch.has(k)){
-      // Anchor the row on the EGY1 side. If both are EGY1 (a league match), the
-      // player's own side is the anchor; the opponent is the other team.
-      byMatch.set(k,{f:m,side_id:sid,opp_id:oid,players:[]});
-    }
-    byMatch.get(k).players.push({p,m});
-  });
-
-  // For each match, pick the anchor club (an EGY1 side) and split players by
-  // which team they played for, so the squad panel can show both line-ups.
-  const games=[...byMatch.values()].map(g=>{
-    // The row's club is the EGY1 side of the fixture; prefer sid, fall back to
-    // oid if only the opponent is EGY1 (an EGY1 club as someone's opponent).
-    const anchor=(!EGY1_ON||EGY1.has(g.side_id))?g.side_id:g.opp_id;
-    const rep=g.players.find(x=>String(x.m.sid)===anchor)||g.players[0];
-    const f=rep.m;
-    return {
-      f, club:f.side, club_id:anchor, opp:f.opp, opp_id:f.oid,
-      // Everyone in the match, both teams -- the panel groups them by side.
-      players:g.players.map(x=>x.p),
-      byId:g.players,
-      t:Date.parse(f.fd||"")||0,
-    };
-  });
-
-  // ONE match per club: its most recent. Every EGY1 club has many matches across
-  // the window -- each player's last game may be a different round -- but "last
-  // result" means the club's newest, so keep only that per anchor club. A match
-  // is claimed by the newest-dated appearance of each club as an anchor.
-  const latestByClub=new Map();
-  for(const g of games.sort((a,b)=>b.t-a.t)){
-    if(!latestByClub.has(g.club_id))latestByClub.set(g.club_id,g);
-  }
-  // Dedup: if Zamalek's last match and Cleopatra's last match are the SAME game
-  // (they played each other), it must show once, not once per club. Keyed by the
-  // ordered pair of clubs + date, the same key the match was bucketed under.
-  const seen=new Set(), games2=[];
-  for(const g of [...latestByClub.values()].sort((a,b)=>b.t-a.t)){
-    const key=[String(g.club_id),String(g.opp_id)].sort().join("-")+"|"+g.f.fd;
-    if(seen.has(key))continue;
-    seen.add(key); games2.push(g);
-  }
-
-  // MATCH CARDS, not a table. A result is a scoreline between two crests -- the
-  // shape of a match report -- and a scout scanning results reads the score
-  // fastest when it is the biggest thing on the card, flanked by the badges, not
-  // a cell in a row. Redesigned to look like what it is.
-  return `<div class="mcards">${games2.map((g,i)=>{
-    const f=g.f;
-    const [a,b]=(f.sc||"-").split("-").map(x=>x.trim());
-    const homeCrest=CRESTS[g.club_id]?`<img src="${esc(CRESTS[g.club_id])}" alt="" loading="lazy">`
-      :`<span class="mcx">${esc(initials(f.side||"?"))}</span>`;
-    const awayCrest=CRESTS[g.opp_id]?`<img src="${esc(CRESTS[g.opp_id])}" alt="" loading="lazy">`
-      :`<span class="mcx">${esc(initials(f.opp||"?"))}</span>`;
-    // Result from the anchor club's side: green win, red loss, grey draw. The
-    // stripe down the card edge carries it so the outcome reads before any word.
-    const outcome=f.r==="W"?"win":f.r==="L"?"loss":"draw";
-
-    // Scorers, both sides, from the tracked players. This is what a card leads
-    // with under the score -- who did it.
-    const scorers=g.byId.filter(x=>x.m.g||x.m.a)
-      .map(x=>`${esc(x.p.name)}${x.m.g?` <i class="mg">${x.m.g>1?x.m.g+"×":""}⚽</i>`:""}${x.m.a?` <i class="ma">${x.m.a>1?x.m.a+"×":""}A</i>`:""}`);
-
-    // The full line-up opens in a MODAL, not inline -- a team sheet is worth the
-    // whole screen, and a dropdown inside a grid of cards pushed everything
-    // below it around. Stashed on FXGAMES so the modal can look it up by index
-    // without re-deriving.
-    FXGAMES[i]=g;
-    // Whether a full line-up (with foreign players) exists for this match.
-    const lu=matchLineup(g);
-    const total=lu?lu.players.length:g.players.length;
-
-    return `<article class="mcard ${outcome}" data-game="${i}">
-      <div class="mtop">
-        <div class="mcomp">${esc(f.cn||f.comp||"League")}<span>${esc(f.fd||"")}</span></div>
-        <div class="mscore">
-          <div class="mteam h"><span class="mcc">${homeCrest}</span><b>${esc(f.side||"—")}</b></div>
-          <div class="mnum"><em>${esc(a||"")}</em><i>–</i><em>${esc(b||"")}</em></div>
-          <div class="mteam a"><span class="mcc">${awayCrest}</span><b>${esc(f.opp||"—")}</b></div>
-        </div>
-      </div>
-      <div class="mbody">
-        ${scorers.length?`<div class="mscorers">${scorers.join('<span class="dot">·</span>')}</div>`:""}
-        <button class="mopen" data-game="${i}">
-          <span>${lu?"Line-ups":`${g.players.length} tracked player${g.players.length===1?"":"s"}`}</span>
-          <span class="mchev">→</span>
-        </button>
-      </div>
-    </article>`;
-  }).join("")}</div>`;
-}
-
-// The card index -> its game object, so the modal can render a match's line-up
-// on demand. Reset each time the results are drawn.
-let FXGAMES={};
-
-/* The full line-up for a match, merging the scraped team sheet (which has the
-   FOREIGN players too) with our per-player data (minutes, goals, and a link to
-   the tracked Egyptians' profiles).
-
-   Keyed by the pair of verein ids: LINEUPS is stored per match report and each
-   entry names both clubs' ids, so a game between two known clubs finds its sheet
-   whichever way round the ids fall. Returns null when no sheet was scraped. */
-function matchLineup(g){
-  const a=String(g.club_id), b=String(g.opp_id);
-  for(const lu of Object.values(LINEUPS||{})){
-    const h=String(lu.home_id), w=String(lu.away_id);
-    if((h===a&&w===b)||(h===b&&w===a))return lu;
-  }
-  return null;
-}
-
-// The club a player played a given match FOR -- the side named on the row.
-function p_side(m){ return m.side||""; }
-
-/* ---------- match line-up modal ----------
-   Opens the full team sheet for a card: both sides, players grouped by position
-   (keeper, defence, midfield, attack), tracked Egyptians clickable and carrying
-   their minutes and goals, foreign players shown as plain entries. */
-function openMatch(idx){
-  const g=FXGAMES[idx]; if(!g)return;
-  const f=g.f, lu=matchLineup(g);
-  const mine={};
-  for(const {p,m} of g.byId) mine[String(p.tm_id)]={p,m};
-
-  const teamSheet=(clubName,clubId,scraped)=>{
-    let rows;
-    if(scraped){
-      rows=scraped.map(x=>{
-        const t=mine[String(x.id)];
-        return {name:x.name,pos:x.pos,band:POS_BAND(x.pos),
-                tmid:t?t.p.tm_id:null,
-                min:t?t.m.min:null,g:t?t.m.g:0,a:t?t.m.a:0,
-                now:t&&isFree(t.p)?"free agent":t&&t.p.club&&t.p.club!==clubName?`now ${t.p.club}`:""};
-      });
-    }else{
-      rows=g.byId.filter(x=>x.m.side===clubName).map(({p,m})=>
-        ({name:p.name,pos:p.position,band:POS_BAND(p.position),tmid:p.tm_id,
-          min:m.min,g:m.g,a:m.a,
-          now:isFree(p)?"free agent":p.club&&p.club!==clubName?`now ${p.club}`:""}));
-    }
-    rows.sort((x,y)=>x.band-y.band||(y.min||0)-(x.min||0));
-    let html="",cur=-1;
-    for(const r of rows){
-      if(r.band!==cur){cur=r.band;html+=`<div class="lsband">${BAND_NAME[r.band]}</div>`;}
-      const stat=[r.min!=null?`${r.min}'`:"",r.g?`<i class="mg">${r.g}⚽</i>`:"",r.a?`<i class="ma">${r.a}A</i>`:""]
-        .filter(Boolean).join(" ");
-      html+=`<div class="lsrow${r.tmid?" tracked":""}"${r.tmid?` data-id="${esc(r.tmid)}"`:""}>
-        <b>${esc(r.name)}</b>
-        <span class="lspos">${esc(r.pos||"")}</span>
-        <span class="lsstat">${stat}</span>
-        ${r.now?`<span class="lsnow ${r.now.startsWith("free")?"fa":"moved"}">${esc(r.now)}</span>`:""}
-      </div>`;
-    }
-    const crest=CRESTS[clubId]?`<img class="cc" src="${esc(CRESTS[clubId])}" alt="">`:"";
-    return `<div class="lsteam"><div class="lsh">${crest}${esc(clubName)}</div>${html}</div>`;
-  };
-
-  // The scraped sheet stores each player's side as home/away relative to the
-  // REPORT's home team, which may be either of our two clubs. Map it to our
-  // club/opp so the columns are the right way round.
-  const homeScraped=lu&&(String(lu.home_id)===String(g.club_id)
-    ?lu.players.filter(p=>p.side==="home"):lu.players.filter(p=>p.side==="away"));
-  const awayScraped=lu&&(String(lu.home_id)===String(g.club_id)
-    ?lu.players.filter(p=>p.side==="away"):lu.players.filter(p=>p.side==="home"));
-
-  const hc=CRESTS[g.club_id]?`<img src="${esc(CRESTS[g.club_id])}" alt="">`:"";
-  const oc=CRESTS[g.opp_id]?`<img src="${esc(CRESTS[g.opp_id])}" alt="">`:"";
-  const [sa,sb]=(f.sc||"-").split("-").map(x=>x.trim());
-
-  $("panel").innerHTML=`
-    <div class="lshead">
-      <button class="pclose" id="pclose" aria-label="Close">×</button>
-      <div class="mcomp">${esc(f.cn||f.comp||"League")}<span>${esc(f.fd||"")}</span></div>
-      <div class="mscore lsscore">
-        <div class="mteam h"><span class="mcc">${hc||`<span class="mcx">${esc(initials(f.side))}</span>`}</span><b>${esc(f.side||"")}</b></div>
-        <div class="mnum"><em>${esc(sa||"")}</em><i>–</i><em>${esc(sb||"")}</em></div>
-        <div class="mteam a"><span class="mcc">${oc||`<span class="mcx">${esc(initials(f.opp))}</span>`}</span><b>${esc(f.opp||"")}</b></div>
-      </div>
-    </div>
-    <div class="lsbody">
-      ${teamSheet(f.side,g.club_id,homeScraped)}
-      ${teamSheet(f.opp,g.opp_id,awayScraped)}
-    </div>
-    ${lu?"":`<p class="lsnote">Only the tracked Egyptian players are shown — a full line-up has not been fetched for this match yet.</p>`}`;
-  $("panel").classList.add("open","wide");
-  $("scrim").classList.add("on");
-  $("pclose").onclick=closePanel;
-  $("panel").querySelectorAll(".lsrow.tracked").forEach(r=>r.onclick=()=>openPanel(r.dataset.id));
-}
-
-function drawLastResults(){
-  const all=rows().filter(p=>lastMatch(p));
-  $("count").innerHTML=`${all.length}<small>with a result</small>`;
-  const nNext=rows().filter(p=>NEXTM[p.tm_id]&&!isFree(p)).length;
-
-  if(!all.length){
-    $("body").innerHTML=fxTabs(nNext,0)
-      +`<div class="empty"><b>No results yet</b>No player in this filter has a recent club match on record.${savedNote()}</div>`;
-    $("body").querySelectorAll("[data-fxt]").forEach(b=>b.onclick=()=>{S.fxtab=b.dataset.fxt;drawFixtures();});
-    return;
-  }
-
-  // The Egyptian table groups by the club a player played the match FOR, so a
-  // free agent belongs there with his old squad and shows "now free agent" --
-  // which is what you want to see when you open the result. based already places
-  // a free agent by his last club, so an Egypt-based free agent lands here.
-  //
-  // The Abroad table is per-player and still drops free agents: a standalone row
-  // for a clubless player's last game is a stale fixture, not a current one, and
-  // he has no squad to sit in there.
-  const egy=all.filter(p=>basedOf(p)==="egypt");
-  const abroad=all.filter(p=>basedOf(p)==="abroad"&&!isFree(p))
-    // Newest first, dates parsed not string-sorted.
-    .sort((a,b)=>(Date.parse(lastMatch(b).fd||"")||0)-(Date.parse(lastMatch(a).fd||"")||0)
-      ||(a.name||"").localeCompare(b.name||""));
-
-  // Abroad, as player cards -- one per diaspora player's last match, since he is
-  // almost always the only tracked Egyptian in it.
-  const abroadBlock=abroad.length
-    ? `<div class="fxgrp"><div class="ntgh"><b>Abroad</b><span>${abroad.length} player${abroad.length===1?"":"s"}</span></div>
-        <div class="mcards">${abroad.map(lastPlayerCard).join("")}</div></div>`
-    : "";
-  // Count the EGY1 clubs whose last match is shown -- players who last featured
-  // for a non-top-flight side are not in this section, so the count is of clubs
-  // that will actually appear, not of everyone tagged Egyptian.
-  const egClubs=new Set(egy.map(p=>String(lastMatch(p).sid)).filter(id=>EGY1.has(id)));
-  const egyBlock=egClubs.size
-    ? `<div class="fxgrp"><div class="ntgh"><b class="eg">Egyptian Premier League</b><span>${egClubs.size} club${egClubs.size===1?"":"s"}</span></div>
-        <p class="ntnote">Each club's last league match — one row per game, both teams. Open a row for the line-ups, with each player's current club or free-agent status. Players whose last match was for a lower-division or foreign club are not shown here.</p>
-        ${egyptLastResults(egy)}</div>`
-    : "";
-
-  $("body").innerHTML=fxTabs(nNext,all.length)+abroadBlock+egyBlock;
-  $("body").querySelectorAll("[data-fxt]").forEach(b=>b.onclick=()=>{S.fxtab=b.dataset.fxt;drawFixtures();});
-
-  // A club card's "Line-ups" button opens the match modal (full team sheet).
-  $("body").querySelectorAll(".mopen").forEach(b=>b.onclick=()=>openMatch(+b.dataset.game));
-  // An abroad player card opens that player's profile panel.
-  $("body").querySelectorAll(".pcard[data-id]").forEach(c=>c.onclick=()=>openPanel(c.dataset.id));
-  wireRows();
-}
-
 function drawBody(){
   if(S.view==="fix")return drawFixtures();
   if(S.view==="nat")return drawNational();
@@ -2050,16 +1651,8 @@ function drawAccount(){
 
 async function boot(){
   const load=n=>fetch(`data/${n}.json`).then(r=>r.json()).catch(()=>({}));
-  let egy1arr;
-  [DATA,MSTATS,CRESTS,NEXTM,NATIDS,egy1arr,LINEUPS]=await Promise.all(
-    ["data","mstats","crests","nextm","natids","egy1","lineups"].map(load));
-  // The current Egyptian Premier League's clubs, by verein id. The last-results
-  // view uses it to keep the Egyptian section to the actual top flight -- without
-  // it, grouping by the club a player featured for pulled in every foreign youth
-  // side and lower-division team a diaspora player ever appeared for (Rostov,
-  // Proxy, Dayrout, Liverpool U21). Empty array if the file is absent, which
-  // simply shows every side, the prior behaviour.
-  EGY1=new Set(Array.isArray(egy1arr)?egy1arr.map(String):[]);
+  [DATA,MSTATS,CRESTS,NEXTM,NATIDS]=await Promise.all(
+    ["data","mstats","crests","nextm","natids"].map(load));
   // Copied from the dossier, where hiding a cap-tied player is right: that site
   // lists who Egypt can still sign. Here it is wrong. This registry answers "who
   // is out there at all", and a player cap-tied to Qatar is still an Egyptian
