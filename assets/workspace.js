@@ -1626,22 +1626,38 @@ function egyptLastResults(list){
   // So: group by club, take the newest match date any of its players has, and
   // that IS the club's last game. The featured squad is exactly the players
   // whose own last match falls on that date -- the rest simply were not in it.
+  // Grouped by the club the player played the match FOR (f.side), not his
+  // current club. 216 players' last game was for a different side than they are
+  // at now -- a transfer since -- and grouping by current club filed those under
+  // the wrong team: Abdelrahman Emad's last match was for Zed FC, but he is at
+  // Ghazl El Mahalla now, so under the old grouping his Zed game appeared as a
+  // Ghazl fixture. The match belongs to the club that played it.
   const byClub=new Map();
   list.forEach(p=>{
-    const k=p.club||"—";
-    if(!byClub.has(k))byClub.set(k,{club:k,club_id:p.club_id,players:[]});
+    const m=lastMatch(p);
+    const k=m.side||p.club||"—";
+    if(!byClub.has(k))byClub.set(k,{club:k,club_id:m.sid,players:[]});
     byClub.get(k).players.push(p);
   });
   const games=[...byClub.values()].map(c=>{
-    // The club's last match is the newest last-match date across its squad.
-    let f=null,t=-1;
-    for(const p of c.players){const m=lastMatch(p);const d=Date.parse(m.fd||"")||0;
-      if(d>t){t=d;f=m;}}
-    // Featured = players whose own last match IS this one (same date and
-    // opponent, so a club that played twice on nearby dates is not merged).
-    const featured=c.players.filter(p=>{const m=lastMatch(p);
-      return m.fd===f.fd&&m.opp===f.opp;});
-    return {club:c.club,club_id:c.club_id,f,players:featured,t};
+    // The club's last match is the game the MOST of its players share, not the
+    // one with the newest date. A single player's later appearance -- a cameo,
+    // or a game for a since-left club -- was hijacking the whole row: El
+    // Mokawloon's real last match had eight players on 29 May, but one man's
+    // 8 Jun sub appearance made the row read "0-2 vs Wadi Degla, 1 player".
+    //
+    // Grouped by the actual game (date + opponent), the winner is the group with
+    // the most players; date breaks a tie. That is the fixture the squad played,
+    // which is what "the club's last match" means.
+    const g=new Map();
+    for(const p of c.players){const m=lastMatch(p);const k=`${m.fd}|${m.opp}`;
+      if(!g.has(k))g.set(k,{f:m,players:[]});
+      g.get(k).players.push(p);}
+    const best=[...g.values()].sort((a,b)=>
+      (b.players.length-a.players.length)
+      ||((Date.parse(b.f.fd||"")||0)-(Date.parse(a.f.fd||"")||0)))[0];
+    return {club:c.club,club_id:c.club_id,f:best.f,players:best.players,
+            t:Date.parse(best.f.fd||"")||0};
   }).sort((a,b)=>b.t-a.t);
   return `<table class="grid fxlast"><thead><tr>
       <th class="c-x"></th><th>Club</th><th class="hide-s">Date</th><th>Opponent</th>
@@ -1664,11 +1680,21 @@ function egyptLastResults(list){
       const sq=g.players.slice()
         .map(p=>({p,m:lastMatch(p)}))
         .sort((a,b)=>(b.m.min||0)-(a.m.min||0));
-      const cells=sq.map(({p,m})=>`<button class="sqp" data-id="${esc(p.tm_id)}">
+      const cells=sq.map(({p,m})=>{
+        // Where he is NOW, beside what he did in the match. For most this is the
+        // same club the row is grouped under, but a player can have PLAYED this
+        // game and since moved -- or become a free agent -- and that is the most
+        // actionable fact about him, so it is shown, and flagged when his current
+        // club differs from the one whose match this is.
+        const now=isFree(p)?`<i class="fa">Free agent</i>`
+          :p.club&&p.club!==g.club?`<i class="moved">now ${esc(p.club)}</i>`:"";
+        return `<button class="sqp" data-id="${esc(p.tm_id)}">
           <b>${esc(p.name)}</b>
           <span>${esc(p.position||"")} · ${m.min?m.min+"'":"—"}${
             m.g?` · <i class="sg">${m.g}G</i>`:""}${m.a?` · <i class="sg">${m.a}A</i>`:""}</span>
-        </button>`).join("");
+          ${now?`<span class="sqnow">${now}</span>`:""}
+        </button>`;
+      }).join("");
 
       return `<tr class="fxrow" data-game="${i}">
         <td class="c-x"><span class="xtoggle">▸</span></td>
@@ -1684,11 +1710,7 @@ function egyptLastResults(list){
 }
 
 function drawLastResults(){
-  // A free agent's last recorded match was for the club he LEFT, so it is not a
-  // current result and grouping it under "Without Club" invented a 28-player
-  // phantom club in the Egyptian list. The Next tab already drops free agents
-  // for the same reason; Last must too, or the two tabs count different squads.
-  const all=rows().filter(p=>lastMatch(p)&&!isFree(p));
+  const all=rows().filter(p=>lastMatch(p));
   $("count").innerHTML=`${all.length}<small>with a result</small>`;
   const nNext=rows().filter(p=>NEXTM[p.tm_id]&&!isFree(p)).length;
 
@@ -1699,12 +1721,19 @@ function drawLastResults(){
     return;
   }
 
+  // The Egyptian table groups by the club a player played the match FOR, so a
+  // free agent belongs there with his old squad and shows "now free agent" --
+  // which is what you want to see when you open the result. based already places
+  // a free agent by his last club, so an Egypt-based free agent lands here.
+  //
+  // The Abroad table is per-player and still drops free agents: a standalone row
+  // for a clubless player's last game is a stale fixture, not a current one, and
+  // he has no squad to sit in there.
   const egy=all.filter(p=>basedOf(p)==="egypt");
-  const abroad=all.filter(p=>basedOf(p)==="abroad")
+  const abroad=all.filter(p=>basedOf(p)==="abroad"&&!isFree(p))
     // Newest first, dates parsed not string-sorted.
     .sort((a,b)=>(Date.parse(lastMatch(b).fd||"")||0)-(Date.parse(lastMatch(a).fd||"")||0)
       ||(a.name||"").localeCompare(b.name||""));
-  const nEgyClubs=new Set(egy.map(p=>`${p.club}|${lastMatch(p).fd}|${lastMatch(p).opp}`)).size;
 
   const abroadBlock=abroad.length
     ? `<div class="fxgrp"><div class="ntgh"><b>Abroad</b><span>${abroad.length} player${abroad.length===1?"":"s"}</span></div>
@@ -1713,10 +1742,12 @@ function drawLastResults(){
           <th class="r">Result</th><th class="r hide-s">In the match</th></tr></thead>
         <tbody>${abroad.map(lastRow).join("")}</tbody></table></div>`
     : "";
-  // By club, exactly as the Next tab does, so one squad's match is one row.
+  // One row per club, that club's last match. Count of clubs = distinct sides
+  // played FOR, which is how egyptLastResults groups.
+  const nEgyClubs=new Set(egy.map(p=>lastMatch(p).side||p.club)).size;
   const egyBlock=egy.length
-    ? `<div class="fxgrp"><div class="ntgh"><b class="eg">Egyptian league</b><span>${nEgyClubs} match${nEgyClubs===1?"":"es"} · ${egy.length} player${egy.length===1?"":"s"}</span></div>
-        <p class="ntnote">Grouped by club: one result covers the whole squad. Scorers named where there were any.</p>
+    ? `<div class="fxgrp"><div class="ntgh"><b class="eg">Egyptian league</b><span>${nEgyClubs} club${nEgyClubs===1?"":"s"} · ${egy.length} player${egy.length===1?"":"s"}</span></div>
+        <p class="ntnote">Each club's last match, and the tracked players who featured. Open a row for the squad — with each player's current club, or free-agent status.</p>
         ${egyptLastResults(egy)}</div>`
     : "";
 

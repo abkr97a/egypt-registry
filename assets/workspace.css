@@ -591,6 +591,10 @@ td.sides>.sidesw{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
   text-overflow:ellipsis;white-space:nowrap}
 .sqp span{display:block;font-size:11px;color:var(--mut);margin-top:2px}
 .sqp .sg{font-style:normal;color:var(--up);font-weight:700}
+/* Where the player is NOW, when it differs from the club whose match this is. */
+.sqnow{display:block;font-size:10.5px;margin-top:3px}
+.sqnow .fa{font-style:normal;color:var(--red);font-weight:700}
+.sqnow .moved{font-style:normal;color:var(--warn);font-weight:600}
 
 /* Agenda. Days as headings, matches beneath — calendar-shaped without a month
    grid's empty cells. The count per day is the point: it is what says "go this
