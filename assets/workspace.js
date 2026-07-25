@@ -1688,50 +1688,67 @@ function egyptLastResults(list){
     seen.add(key); games2.push(g);
   }
 
-  return `<table class="grid fxlast"><thead><tr>
-      <th class="c-x"></th><th>Match</th><th class="hide-s">Date</th><th class="r">Result</th>
-      <th class="r hide-s">Featured</th></tr></thead><tbody>
-    ${games2.map((g,i)=>{
-      const f=g.f;
-      const crest=CRESTS[g.club_id]?`<img class="cc" src="${esc(CRESTS[g.club_id])}" alt="" loading="lazy">`:"";
-      const oc=CRESTS[g.opp_id]?`<img class="cc" src="${esc(CRESTS[g.opp_id])}" alt="" loading="lazy">`:"";
-      const res=f.r==="W"?"W":f.r==="L"?"L":"D";
-      const scorers=g.byId.filter(x=>x.m.g||x.m.a)
-        .map(x=>`${esc(x.p.name)}${x.m.g?` ${x.m.g}G`:""}${x.m.a?` ${x.m.a}A`:""}`);
-      const featured=g.players.length;
+  // MATCH CARDS, not a table. A result is a scoreline between two crests -- the
+  // shape of a match report -- and a scout scanning results reads the score
+  // fastest when it is the biggest thing on the card, flanked by the badges, not
+  // a cell in a row. Redesigned to look like what it is.
+  return `<div class="mcards">${games2.map((g,i)=>{
+    const f=g.f;
+    const [a,b]=(f.sc||"-").split("-").map(x=>x.trim());
+    const homeCrest=CRESTS[g.club_id]?`<img src="${esc(CRESTS[g.club_id])}" alt="" loading="lazy">`
+      :`<span class="mcx">${esc(initials(f.side||"?"))}</span>`;
+    const awayCrest=CRESTS[g.opp_id]?`<img src="${esc(CRESTS[g.opp_id])}" alt="" loading="lazy">`
+      :`<span class="mcx">${esc(initials(f.opp||"?"))}</span>`;
+    // Result from the anchor club's side: green win, red loss, grey draw. The
+    // stripe down the card edge carries it so the outcome reads before any word.
+    const outcome=f.r==="W"?"win":f.r==="L"?"loss":"draw";
 
-      // Squad panel, split by the two sides. A player chip shows minutes, any
-      // goal/assist, and where he is NOW (still here / moved / free agent). NOT
-      // the full eleven -- only players in this database.
-      const sideCells=(clubName)=>g.byId
-        .filter(x=>x.m.side===clubName)
-        .sort((a,b)=>(b.m.min||0)-(a.m.min||0))
-        .map(({p,m})=>{
-          const now=isFree(p)?`<i class="fa">free agent</i>`
-            :p.club&&p.club!==p_side(m)?`<i class="moved">now ${esc(p.club)}</i>`:"";
-          return `<button class="sqp" data-id="${esc(p.tm_id)}">
-            <b>${esc(p.name)}</b>
-            <span>${esc(p.position||"")} · ${m.min?m.min+"'":"—"}${
-              m.g?` · <i class="sg">${m.g}G</i>`:""}${m.a?` · <i class="sg">${m.a}A</i>`:""}</span>
-            ${now?`<span class="sqnow">${now}</span>`:""}
-          </button>`;
-        }).join("");
+    // Scorers, both sides, from the tracked players. This is what a card leads
+    // with under the score -- who did it.
+    const scorers=g.byId.filter(x=>x.m.g||x.m.a)
+      .map(x=>`${esc(x.p.name)}${x.m.g?` <i class="mg">${x.m.g>1?x.m.g+"×":""}⚽</i>`:""}${x.m.a?` <i class="ma">${x.m.a>1?x.m.a+"×":""}A</i>`:""}`);
 
-      const homeName=f.side, awayName=f.opp;
-      const homeSquad=sideCells(homeName), awaySquad=sideCells(awayName);
+    // The two line-ups, revealed on click. Each chip: minutes, any goal/assist,
+    // and current club or free-agent status. Only tracked (Egyptian) players --
+    // the card says so, since the full eleven includes foreign teammates the
+    // database does not hold.
+    const sideChips=(clubName)=>g.byId
+      .filter(x=>x.m.side===clubName)
+      .sort((a,b)=>(b.m.min||0)-(a.m.min||0))
+      .map(({p,m})=>{
+        const now=isFree(p)?`<i class="fa">free agent</i>`
+          :p.club&&p.club!==p_side(m)?`<i class="moved">now ${esc(p.club)}</i>`:"";
+        return `<button class="sqp" data-id="${esc(p.tm_id)}">
+          <b>${esc(p.name)}</b>
+          <span>${esc(p.position||"")} · ${m.min?m.min+"'":"—"}${
+            m.g?` · <i class="sg">${m.g}G</i>`:""}${m.a?` · <i class="sg">${m.a}A</i>`:""}</span>
+          ${now?`<span class="sqnow">${now}</span>`:""}
+        </button>`;
+      }).join("");
+    const homeChips=sideChips(f.side), awayChips=sideChips(f.opp);
 
-      return `<tr class="fxrow" data-game="${i}">
-        <td class="c-x"><span class="xtoggle">▸</span></td>
-        <td><b>${crest}${esc(f.side||"—")} <span class="vs">v</span> ${oc}${esc(f.opp||"—")}</b>
-          <small class="cn">${scorers.length?"⚽ "+esc(scorers.slice(0,4).join(", ")):esc(f.cn||"")}</small></td>
-        <td class="hide-s"><b>${esc(f.fd||"—")}</b><small class="cn">${esc(f.cn||"")}</small></td>
-        <td class="r"><span class="res ${res}">${esc(f.sc||"")}</span></td>
-        <td class="r num">${featured}</td></tr>
-      <tr class="fxsquad" data-squad="${i}" hidden><td></td><td colspan="4">
-        ${homeSquad?`<div class="sqside"><div class="sqh">${esc(homeName)} — tracked players</div><div class="sqgrid">${homeSquad}</div></div>`:""}
-        ${awaySquad?`<div class="sqside"><div class="sqh">${esc(awayName)} — tracked players</div><div class="sqgrid">${awaySquad}</div></div>`:""}
-      </td></tr>`;
-    }).join("")}</tbody></table>`;
+    return `<article class="mcard ${outcome}" data-game="${i}">
+      <div class="mtop">
+        <div class="mcomp">${esc(f.cn||f.comp||"League")}<span>${esc(f.fd||"")}</span></div>
+        <div class="mscore">
+          <div class="mteam h"><span class="mcc">${homeCrest}</span><b>${esc(f.side||"—")}</b></div>
+          <div class="mnum"><em>${esc(a||"")}</em><i>–</i><em>${esc(b||"")}</em></div>
+          <div class="mteam a"><span class="mcc">${awayCrest}</span><b>${esc(f.opp||"—")}</b></div>
+        </div>
+      </div>
+      <div class="mbody">
+        ${scorers.length?`<div class="mscorers">${scorers.join('<span class="dot">·</span>')}</div>`:""}
+        <button class="mopen" aria-expanded="false">
+          <span>${g.players.length} tracked player${g.players.length===1?"":"s"}</span>
+          <span class="mchev">▾</span>
+        </button>
+      </div>
+      <div class="msquad" hidden>
+        ${homeChips?`<div class="sqside"><div class="sqh">${esc(f.side)}</div><div class="sqgrid">${homeChips}</div></div>`:""}
+        ${awayChips?`<div class="sqside"><div class="sqh">${esc(f.opp)}</div><div class="sqgrid">${awayChips}</div></div>`:""}
+      </div>
+    </article>`;
+  }).join("")}</div>`;
 }
 
 // The club a player played a given match FOR -- the side named on the row.
@@ -1783,18 +1800,20 @@ function drawLastResults(){
   $("body").innerHTML=fxTabs(nNext,all.length)+abroadBlock+egyBlock;
   $("body").querySelectorAll("[data-fxt]").forEach(b=>b.onclick=()=>{S.fxtab=b.dataset.fxt;drawFixtures();});
 
-  // Click a club match to reveal its squad. The detail row is drawn hidden
-  // beside every match, so opening one is a class toggle rather than a redraw --
-  // the list keeps its scroll position, which a redraw would lose.
-  $("body").querySelectorAll("tr.fxrow").forEach(r=>r.onclick=()=>{
-    const sq=$("body").querySelector(`tr.fxsquad[data-squad="${r.dataset.game}"]`);
-    if(!sq)return;
-    const open=sq.hidden;
-    sq.hidden=!open;
-    r.classList.toggle("open",open);
+  // Open a match card to reveal both line-ups. Toggling a class on the squad it
+  // already contains, so opening keeps the scroll position a redraw would lose.
+  $("body").querySelectorAll(".mcard").forEach(card=>{
+    const open=card.querySelector(".mopen"), sq=card.querySelector(".msquad");
+    if(!open||!sq)return;
+    open.onclick=()=>{
+      const now=sq.hidden;
+      sq.hidden=!now;
+      card.classList.toggle("on",now);
+      open.setAttribute("aria-expanded",String(now));
+    };
   });
-  // A player button inside the squad opens that player's panel. stopPropagation
-  // so it does not also toggle the row it sits in.
+  // A player chip opens that player's panel; stopPropagation so it does not also
+  // toggle the card.
   $("body").querySelectorAll(".sqp").forEach(b=>b.onclick=e=>{
     e.stopPropagation();
     openPanel(b.dataset.id);
