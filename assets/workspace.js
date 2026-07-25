@@ -1097,7 +1097,7 @@ function egyptFixtures(list){
         +(c.players.length>6?` +${c.players.length-6} more`:"");
       return `<tr>
         <td><b>${crest}${esc(c.club)}</b><small class="cn">${esc(names)}</small></td>
-        <td class="hide-s"><b>${esc(c.fx.date||"—")}</b><small class="cn">${koTime(c.fx)}</small></td>
+        <td class="hide-s"><b>${koDate(c.fx)}</b><small class="cn">${koTime(c.fx)}</small></td>
         <td>${c.fx.ha==="H"?'<span class="tag">Home</span>':'<span class="tag">Away</span>'} ${ocrest}${esc(c.fx.opp||"—")}</td>
         <td class="r num">${c.players.length}</td></tr>`;
     }).join("")}</tbody></table>`;
@@ -1144,6 +1144,19 @@ const koTime=f=>{
   const d=new Date(f.utc);
   return isNaN(d)?"":d.toLocaleTimeString("en-GB",
     {timeZone:CAIRO,hour:"2-digit",minute:"2-digit",hour12:false});
+};
+// The kickoff DATE in Cairo, for the list. The list showed f.date -- the raw
+// scraped US date -- while the calendar groups by Cairo date, so a late kickoff
+// disagreed: Abdellatif Aboukoura's 7pm US-Eastern match is 02:00 the NEXT day
+// in Cairo, and the list said 25 while the calendar said 26. The times are shown
+// in Cairo, so the dates must be too, or the two views contradict each other on
+// the same fixture. Falls back to the scraped string only when there is no utc.
+const koDate=f=>{
+  if(!f)return"—";
+  if(f.utc){const d=new Date(f.utc);
+    if(!isNaN(d))return d.toLocaleDateString("en-GB",
+      {timeZone:CAIRO,day:"numeric",month:"short",year:"numeric"});}
+  return esc(f.date||"—");
 };
 // The Cairo calendar date. A late kickoff can land on a different DAY in Cairo
 // than at the venue, so grouping must use the same zone the times are shown in
@@ -1282,7 +1295,7 @@ function drawFixtures(){
       <td><span class="who">${p.photo?`<img class="face" src="${esc(p.photo)}" alt="" loading="lazy">`
         :`<span class="face ini">${esc(initials(p.name))}</span>`}<span class="nm"><b>${esc(p.name)}</b>
         <span>${ownc}${esc(p.club||"")}${p.plays_in?` · ${esc(p.plays_in)}`:""}</span></span></span></td>
-      <td class="hide-s"><b>${esc(f.date||"—")}</b><small class="cn">${koTime(f)}</small></td>
+      <td class="hide-s"><b>${koDate(f)}</b><small class="cn">${koTime(f)}</small></td>
       <td>${f.ha==="H"?'<span class="tag">Home</span>':f.ha==="A"?'<span class="tag">Away</span>':""} ${crest}${esc(f.opp||"—")}
         ${f.comp?`<small class="cn">${esc(f.comp)}</small>`:""}</td>
       <td class="hide-s">${strip}</td>
