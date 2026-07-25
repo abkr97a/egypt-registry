@@ -1044,7 +1044,16 @@ function drawNav(){
         "Players you saved — kept in this browser, no account needed"]]:[]),
   ].map(([k,l,c,t])=>`<button data-v="${k}" title="${esc(t)}"${S.view===k?' class="on"':""}>${esc(l)}${c!==""?`<span class="n">${c}</span>`:""}</button>`).join("");
   $("nav").querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>{
-    S.view=b.dataset.v;
+    const from=S.view, to=b.dataset.v;
+    S.view=to;
+    // "My list" should FOLLOW you. It is a shortlist, and the point of a shortlist
+    // is to ask other questions about it — "who is playing next", "who is cap-tied"
+    // — so leaving the My-list tab for another view turns on "Saved only", carrying
+    // the same players into Scouting, Fixtures and the rest. Without this the list
+    // silently widened back to everyone the moment you changed tabs, which is the
+    // opposite of what a saved list is for. The header's "Saved only" toggle turns
+    // it back off to see everyone again.
+    if(from==="mine"&&to!=="mine"&&SHORT.size)S.onlySaved=true;
     // The nav is a shortcut into the same facet the sidebar exposes, so the two
     // can never show different things.
     // Filters survive a view change. They used to be reset here, because two of
