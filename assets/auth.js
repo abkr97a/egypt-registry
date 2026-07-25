@@ -88,16 +88,13 @@ const Auth = {
   },
 
   async signUp(email, password, name) {
-    // Invite-only for now, asked through a function rather than by reading the
-    // table. The table stays unreadable — an invite list is a list of people's
-    // email addresses, and any select policy lets it be enumerated one filter at
-    // a time. is_invited() answers yes or no and returns nothing else.
-    //
-    // This is for a clear message. It is not the enforcement: a check that lives
-    // only in the front-end is not a check.
-    const ok = await this.call("/rest/v1/rpc/is_invited",
-      { method: "POST", body: { addr: email }, auth: false }).catch(() => false);
-    if (!ok) throw new Error("That email has not been invited yet.");
+    // Sign-up is open: anyone can create an account. It began invite-only while
+    // the platform was private, but the site is a showcase now — friends, scouts
+    // and pundits need to self-serve, and a login wall on registration was the
+    // wrong first impression. Browsing was always open; an account only adds a
+    // private shortlist and notes, so opening registration widens nothing that
+    // was ever gated. (The invite table and is_invited() function still exist in
+    // the schema, unused, if it ever needs turning back on.)
     // `data` becomes user_metadata. No profile table, no second write that can
     // half-succeed and leave an account with no name attached.
     const s = await this.call("/auth/v1/signup",
@@ -244,7 +241,7 @@ const AuthUI = {
                     reset: "Reset your password", account: "Your account" }[mode] || "Sign in";
     const note = {
       signin: "Your shortlist and notes follow your account.",
-      signup: "Sign-up is invite-only while this is new.",
+      signup: "Free to join — keep a shortlist and private notes across devices.",
       reset: "We'll email you a link to set a new password.",
       account: "",
     }[mode];
@@ -289,7 +286,7 @@ const AuthUI = {
         </form>
         <div class="authalt">${signup
           ? `Already have an account? <a href="#" id="authswap">Sign in</a>`
-          : `Been invited? <a href="#" id="authswap">Create your account</a>
+          : `New here? <a href="#" id="authswap">Create your account</a>
              <span class="authsep">·</span><a href="#" id="authforgot">Forgot password?</a>`}</div>`;
     }
 
