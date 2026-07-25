@@ -1773,17 +1773,39 @@ function drawBuild(){
 // value-sorted so the marquee names surface first. A player already on the pitch
 // is shown as "picked" and, if chosen again, simply moves to the new slot — you
 // cannot field the same man twice.
-function openPicker(){
-  const i=B.pickSlot; if(i==null)return;
-  const role=FORMS[B.form].slots[i].role;
-  const wrap=$("pickwrap"); if(!wrap)return;
-  const onPitch=new Set(Object.values(B.xi));
+// The eligible/searched list for the current slot, sorted. Split out so the
+// keystroke handler can rebuild only the LIST, never the input.
+function pickList(role){
   const q=(B.pickQ||"").toLowerCase();
-  let list=DATA.filter(p=>roleFits(p,role));
-  if(q)list=list.filter(p=>(p.name+" "+(p.club||"")).toLowerCase().includes(q));
-  list.sort((a,b)=>num(b.market_value_eur)-num(a.market_value_eur));
+  // Without a search, offer the sensible pool: players who fit this slot's role.
+  // The moment someone TYPES, they are naming a person, not browsing a position —
+  // so search the WHOLE registry, not just the role. Filtering the search inside
+  // the role filter is what made "omar" in a right-back slot return nothing: the
+  // man is there, he just is not a right-back. Off-position hits still show, tagged
+  // so the stretch is visible, and sorted below the ones who fit.
+  let list=q
+    ? DATA.filter(p=>(p.name+" "+(p.club||"")).toLowerCase().includes(q))
+    : DATA.filter(p=>roleFits(p,role));
+  list.sort((a,b)=>{
+    if(q){
+      const fa=roleFits(a,role), fb=roleFits(b,role);
+      if(fa!==fb)return fa?-1:1;
+    }
+    return num(b.market_value_eur)-num(a.market_value_eur);
+  });
+  return list;
+}
+// Render (only) the results into the open modal. Called on every keystroke, so it
+// must NOT touch the input — rebuilding the input on each key reset the caret to 0,
+// and on an RTL page that made "omar" come out "ramo". Now the input is built once
+// in openPicker and lives untouched; this repaints the list and the count beside it.
+function renderPickList(role){
+  const list=pickList(role);
+  const q=(B.pickQ||"");
+  const onPitch=new Set(Object.values(B.xi));
   const rows=list.slice(0,80).map(p=>{
     const here=onPitch.has(p.tm_id);
+    const off=!roleFits(p,role);
     const face=p.photo?`<img class="pface" src="${esc(p.photo)}" alt="" loading="lazy">`
                       :`<span class="pface ini">${esc(initials(p.name))}</span>`;
     const crest=CRESTS[p.club_id]?`<img class="cc" src="${esc(CRESTS[p.club_id])}" alt="">`:"";
@@ -1792,34 +1814,50 @@ function openPicker(){
       <span class="pinfo"><b>${esc(p.name)}</b>
         <small>${esc(p.position||"")} · ${crest}${isFree(p)?"Free agent":esc(p.club||"—")}</small></span>
       <span class="pmv">${esc(p.mv_now||"—")}</span>
-      ${here?'<span class="ptag">On pitch</span>':""}</button>`;
+      ${here?'<span class="ptag">On pitch</span>':off?'<span class="ptag off">Off position</span>':""}</button>`;
   }).join("");
+  const cnt=$("pickcount");
+  if(cnt)cnt.textContent=q
+    ? `${list.length} match${list.length===1?"":"es"} across the registry`
+    : `${list.length} eligible`;
+  const box=$("picklist");
+  if(box)box.innerHTML=rows||'<div class="pickempty">No player matches — try a different spelling.</div>';
+  // (Re)bind the rows each render, since their markup was just replaced.
+  const i=B.pickSlot;
+  box&&box.querySelectorAll("[data-pid]").forEach(b=>b.onclick=()=>{
+    const pid=b.dataset.pid;
+    // One man, one shirt: if he is already on the pitch, vacate his old slot first.
+    for(const k of Object.keys(B.xi))if(B.xi[k]===pid)delete B.xi[k];
+    B.xi[i]=pid; buildSave();
+    B.pickSlot=null; B.pickQ=""; $("pickwrap").hidden=true; $("pickwrap").innerHTML=""; drawBuild();
+  });
+}
+function openPicker(){
+  const i=B.pickSlot; if(i==null)return;
+  const role=FORMS[B.form].slots[i].role;
+  const wrap=$("pickwrap"); if(!wrap)return;
+  // Build the shell ONCE. The input is created here and never rebuilt, so typing
+  // never loses the caret. Only the list inside repaints as the query changes.
   wrap.hidden=false;
   wrap.innerHTML=`
     <div class="pickscrim" id="pickscrim"></div>
     <div class="pickbox" role="dialog" aria-label="Choose a player">
       <div class="pickhead">
         <div><b>Choose a ${esc(ROLE_LABEL[role].toLowerCase())}</b>
-          <small>${list.length} eligible${q?" · filtered":""}</small></div>
+          <small id="pickcount"></small></div>
         <button class="pickx" id="pickx" aria-label="Close">×</button>
       </div>
-      <input class="picksearch" id="picksearch" type="search"
+      <input class="picksearch" id="picksearch" type="search" dir="ltr"
         placeholder="Search player or club…" value="${esc(B.pickQ||"")}">
-      <div class="picklist">${rows||'<div class="pickempty">No eligible player matches.</div>'}</div>
+      <div class="picklist" id="picklist"></div>
     </div>`;
   const close=()=>{ B.pickSlot=null; B.pickQ=""; wrap.hidden=true; wrap.innerHTML=""; drawBuild(); };
   $("pickscrim").onclick=close;
   $("pickx").onclick=close;
   const search=$("picksearch");
-  search.oninput=e=>{ B.pickQ=e.target.value; openPicker(); $("picksearch").focus(); };
+  search.oninput=e=>{ B.pickQ=e.target.value; renderPickList(role); };
+  renderPickList(role);
   search.focus();
-  wrap.querySelectorAll("[data-pid]").forEach(b=>b.onclick=()=>{
-    const pid=b.dataset.pid;
-    // One man, one shirt: if he is already on the pitch, vacate his old slot first.
-    for(const k of Object.keys(B.xi))if(B.xi[k]===pid)delete B.xi[k];
-    B.xi[i]=pid; buildSave();
-    B.pickSlot=null; B.pickQ=""; wrap.hidden=true; wrap.innerHTML=""; drawBuild();
-  });
 }
 
 // Share writes the hash into the address bar and copies the full link. No modal:

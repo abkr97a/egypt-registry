@@ -130,7 +130,8 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .count small{font-weight:500;color:var(--mut);font-size:12px;margin-left:6px}
 .search{position:relative;flex:0 1 260px;min-width:150px}
 .search input{width:100%;padding:8px 12px 8px 32px;border-radius:8px;
-  border:1px solid var(--line-2);background:var(--bg);color:var(--ink);font-size:13px;outline:none}
+  border:1px solid var(--line-2);background:var(--bg);color:var(--ink);font-size:13px;outline:none;
+  direction:ltr;text-align:left}
 .search input:focus{border-color:var(--red)}
 .search::before{content:"";position:absolute;left:12px;top:50%;margin-top:-5px;
   width:9px;height:9px;border:1.5px solid var(--mut);border-radius:50%;pointer-events:none}
@@ -846,8 +847,13 @@ td.sides>.sidesw{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
 .pickx{flex:none;width:30px;height:30px;border-radius:8px;border:1px solid var(--line-2);
   background:transparent;color:var(--ink-2);font:400 20px/1 var(--sans);cursor:pointer}
 .pickx:hover{border-color:var(--red);color:var(--red)}
+/* Force left-to-right: the player names are Latin, and on an Arabic browser/OS an
+   input with no explicit direction renders them right-aligned with the caret
+   jumping — "omar" appeared to type in reverse. dir/LTR pins the field so Latin
+   text always reads and edits normally regardless of the page locale. */
 .picksearch{margin:0 16px 10px;padding:9px 12px;border-radius:9px;
-  border:1px solid var(--line-2);background:var(--bg);color:var(--ink);font-size:13px;outline:none}
+  border:1px solid var(--line-2);background:var(--bg);color:var(--ink);font-size:13px;outline:none;
+  direction:ltr;text-align:left}
 .picksearch:focus{border-color:var(--red)}
 .picklist{overflow-y:auto;padding:0 8px 10px}
 .pkrow{display:flex;align-items:center;gap:11px;width:100%;text-align:left;
@@ -866,6 +872,9 @@ td.sides>.sidesw{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
 .pmv{flex:none;font:800 12.5px/1 var(--sans);font-variant-numeric:tabular-nums;color:var(--ink-2)}
 .ptag{flex:none;font:700 9px/1 var(--sans);letter-spacing:.05em;text-transform:uppercase;
   color:var(--up);border:1px solid var(--up);border-radius:5px;padding:3px 5px;margin-left:2px}
+/* Off-position: a name-search can surface a player who does not fit this slot.
+   Amber, not green -- pickable, but flagged as a stretch. */
+.ptag.off{color:var(--warn);border-color:var(--warn)}
 .pickempty{padding:30px 16px;text-align:center;color:var(--mut);font-size:13px}
 
 @media(max-width:620px){
