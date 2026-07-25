@@ -1616,15 +1616,33 @@ function lastRow(p){
    the row. Keyed on club + date + opponent so a squad that played two matches in
    the window shows both, not one merged row. */
 function egyptLastResults(list){
-  const byGame=new Map();
+  // ONE row per club: its most recent match. "Last match" is per-player -- the
+  // last game each man featured in -- so a squad where several players have not
+  // started in weeks produced a separate row for each of their different last
+  // games, and Zed FC showed ten "matches" for what should be one round. A club
+  // plays one last match; a player who did not feature in it did not feature,
+  // he does not spawn a fixture of his own.
+  //
+  // So: group by club, take the newest match date any of its players has, and
+  // that IS the club's last game. The featured squad is exactly the players
+  // whose own last match falls on that date -- the rest simply were not in it.
+  const byClub=new Map();
   list.forEach(p=>{
-    const f=lastMatch(p);
-    const k=`${p.club||"—"}|${f.fd}|${f.opp}`;
-    if(!byGame.has(k))byGame.set(k,{club:p.club||"—",club_id:p.club_id,f,players:[]});
-    byGame.get(k).players.push(p);
+    const k=p.club||"—";
+    if(!byClub.has(k))byClub.set(k,{club:k,club_id:p.club_id,players:[]});
+    byClub.get(k).players.push(p);
   });
-  const games=[...byGame.values()].sort((a,b)=>
-    (Date.parse(b.f.fd||"")||0)-(Date.parse(a.f.fd||"")||0));
+  const games=[...byClub.values()].map(c=>{
+    // The club's last match is the newest last-match date across its squad.
+    let f=null,t=-1;
+    for(const p of c.players){const m=lastMatch(p);const d=Date.parse(m.fd||"")||0;
+      if(d>t){t=d;f=m;}}
+    // Featured = players whose own last match IS this one (same date and
+    // opponent, so a club that played twice on nearby dates is not merged).
+    const featured=c.players.filter(p=>{const m=lastMatch(p);
+      return m.fd===f.fd&&m.opp===f.opp;});
+    return {club:c.club,club_id:c.club_id,f,players:featured,t};
+  }).sort((a,b)=>b.t-a.t);
   return `<table class="grid fxlast"><thead><tr>
       <th class="c-x"></th><th>Club</th><th class="hide-s">Date</th><th>Opponent</th>
       <th class="r">Result</th><th class="r hide-s">Featured</th></tr></thead><tbody>
