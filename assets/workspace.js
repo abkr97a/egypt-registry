@@ -1011,7 +1011,10 @@ function drawNav(){
   // caps().total, not natl.length: four players are capped per their profile with
   // no match list published, and counting rows alone dropped them from a view
   // whose whole subject is who has played for whom.
-  const withNat=pool.filter(p=>caps(p).total).length;
+  // Cap-tied-elsewhere players were removed from the National caps view, so the
+  // tab count excludes them too — the number on the tab must equal what the view
+  // draws.
+  const withNat=pool.filter(p=>caps(p).total&&natBucket(p)!=="tied").length;
   // Four views, not six. Dual and Egypt-only were tabs AND a sidebar facet -- the
   // same cut of the same table, reachable two ways, each able to contradict the
   // other's state. They are a filter, so the filter keeps them; a view is a
@@ -1342,7 +1345,10 @@ function drawFixtures(){
 // player, not the side. Every team he has played for is still shown, as badges on
 // his row, so nothing is lost -- it is just no longer the organising principle.
 const NATBUCKETS=[
-  ["tied", "Cap-tied elsewhere", "A senior appearance for another country. Under FIFA Article 9 he can no longer switch."],
+  // "Cap-tied elsewhere" removed at the user's request: this view now shows only
+  // players who are Egypt's — senior Egypt caps, and youth-capped players still
+  // available. A player with a senior cap for another country is dropped from the
+  // caps breakdown (he still appears everywhere else in the registry).
   ["egypt","Senior caps for Egypt", "Already committed and playing. These are the successes, not the targets."],
   ["open", "Youth caps only — still selectable", "Youth appearances never cap-tie. Every one of these players remains available to Egypt."],
 ];
@@ -1463,7 +1469,10 @@ function drawNatFixtures(){
 }
 
 function drawNational(){
-  const list=rows().filter(p=>caps(p).total);
+  // Capped players, but NOT those cap-tied to another country: that group was
+  // removed from this view, so it must also leave the count and the list, or the
+  // header would promise rows the page no longer draws.
+  const list=rows().filter(p=>caps(p).total&&natBucket(p)!=="tied");
   $("count").innerHTML=`${list.length}<small>with caps</small>`;
   if(!list.length){
     $("body").innerHTML=`<div class="empty"><b>Nobody matches</b>No player in this filter has a national-team appearance.${savedNote()}</div>`;
