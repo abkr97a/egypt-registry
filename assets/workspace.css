@@ -113,7 +113,31 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   font-size:12px;color:var(--ink-2);margin-top:4px}
 .clearf:hover{border-color:var(--red);color:var(--red)}
 
-.main{display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.main{display:flex;flex-direction:column;overflow:hidden;min-width:0;position:relative}
+/* Egyptian-football wallpaper. A large gold Eagle of Saladin, watermark-faint, in
+   the far corner of the content area -- the crest on the flag, the same mark the
+   brand uses, blown up as a backdrop. Inline SVG as a data URI so it needs no
+   external file (the CSP blocks those). z-index and low opacity keep it strictly
+   behind the data; it is atmosphere, never something a row has to read across.
+   The pyramid rule beneath it adds a second, quieter national motif. */
+.main::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+  background-repeat:no-repeat, repeat-x;
+  background-position:right -50px bottom -30px, left bottom;
+  background-size:min(480px,55%) auto, 140px 120px;
+  /* 9% on the dark ground: enough to read as a watermark, faint enough that a
+     data cell never has to fight it -- and it lives in the bottom-right corner,
+     away from the left-aligned rows. */
+  opacity:.09;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23d4a537' d='M12 2.6c1.5 1.9 3.6 2.4 5.9 2.1-.5 1.4-1.6 2.2-3 2.5 1.7.5 3 .3 4.3-.5-.4 1.6-1.5 2.7-3.1 3.2 1.2.6 2.4.6 3.6.1-.7 1.5-2 2.3-3.6 2.5.6.9.6 1.9.2 2.9-.9-.8-1.9-1-3-.8.4 1 .3 2-.3 2.9-.6-.9-1.4-1.4-2.4-1.5v3.9h-1.2v-3.9c-1 .1-1.8.6-2.4 1.5-.6-.9-.7-1.9-.3-2.9-1.1-.2-2.1 0-3 .8-.4-1-.4-2 .2-2.9-1.6-.2-2.9-1-3.6-2.5 1.2.5 2.4.5 3.6-.1-1.6-.5-2.7-1.6-3.1-3.2 1.3.8 2.6 1 4.3.5-1.4-.3-2.5-1.1-3-2.5 2.3.3 4.4-.2 5.9-2.1z'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='120' viewBox='0 0 140 120'%3E%3Cg fill='none' stroke='%23d4a537' stroke-width='1' opacity='.5'%3E%3Cpath d='M20 100 L50 40 L80 100 Z'/%3E%3Cpath d='M70 100 L100 55 L130 100 Z'/%3E%3C/g%3E%3C/svg%3E");
+}
+/* On the light theme a gold watermark on white washes out; a touch more opacity
+   holds it. */
+:root[data-theme="light"] .main::before{opacity:.11}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]) .main::before{opacity:.11}}
+/* The header and the body sit above the wallpaper. */
+.top,.body{position:relative;z-index:1}
 /* The header carries the same 3px crimson rule the sidebar does, so the chrome
    frames the tool in the flag's colour on two edges. A whisper of gradient gives
    it depth without a hard fill that would compete with the active tab. */
