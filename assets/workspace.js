@@ -1023,8 +1023,8 @@ function drawNav(){
   $("nav").innerHTML=[
     ["roster","Roster",n,"Every player in the registry"],
     ["scout","Scouting",withMatch,"Squad status across the last ten club matchdays"],
-    ["fix","Fixtures",withFix,"Next match for each player's club"],
-    ["nat","National",withNat,"National-team appearances and what they mean for eligibility"],
+    ["fix","Upcoming fixtures",withFix,"Next match for each player's club"],
+    ["nat","National teams",withNat,"National-team appearances and what they mean for eligibility"],
     // The game. No count — it is not a cut of the registry, it is a blank pitch to
     // fill — so it carries a star instead, marking it as the one view that is play.
     ["build","⚽ Build XI","","Pick your dream Egypt XI from the eligible pool and share it"],
@@ -1640,7 +1640,14 @@ const ROLE_LABEL={GK:"Goalkeeper",CB:"Centre-back",LB:"Left-back",RB:"Right-back
 // but the last team is remembered in this browser so a refresh does not wipe the
 // pitch. The URL hash always wins over the cache when present.
 const BUILD_KEY="reg-build";
-const B={form:"433",xi:{},pickSlot:null};
+const B={form:"433",xi:{},pickSlot:null,saved:null};
+// The signed-in reader's kept squads, fetched from Supabase. null = not loaded
+// yet (or signed out); an array once fetched. Held on B so the view can redraw
+// the list without refetching on every keystroke.
+async function loadSquads(){
+  if(typeof Auth==="undefined"||!Auth.user){B.saved=null;return;}
+  try{ B.saved=await Auth.squads(); }catch(_){ B.saved=[]; }
+}
 function buildLoad(){
   try{const raw=localStorage.getItem(BUILD_KEY);if(raw){const d=JSON.parse(raw);
     if(FORMS[d.form])B.form=d.form;
@@ -1699,6 +1706,14 @@ function reflowForm(newForm){
 const byId=id=>DATA.find(p=>p.tm_id===id);
 
 function drawBuild(){
+  // Lazily fetch saved squads the first time a signed-in reader opens this view
+  // (afterSignIn already loads them on a fresh sign-in, but a returning user with
+  // a restored session reaches Build without going through it). Fire once, then
+  // redraw when it lands; squadsHTML shows "Loading…" until then.
+  if(typeof Auth!=="undefined"&&Auth.user&&B.saved==null){
+    B._loading||(B._loading=true,loadSquads().finally(()=>{B._loading=false;
+      if(S.view==="build")drawBuild();}));
+  }
   const form=FORMS[B.form];
   const filled=form.slots.filter((_,i)=>B.xi[i]).length;
   const total=form.slots.length;
@@ -1746,6 +1761,7 @@ function drawBuild(){
         <div class="bstat"><span>Avg age</span><b>${avgAge?avgAge.toFixed(1):"—"}</b></div>
         <div class="bstat"><span>Picked</span><b>${filled} / ${total}</b></div>
         <div class="bactions">
+          <button class="bbtn" id="bsave"${filled?"":" disabled"}>Save squad</button>
           <button class="bbtn" id="bshare"${filled?"":" disabled"}>Share XI</button>
           <button class="bbtn ghost" id="bclear"${filled?"":" disabled"}>Clear</button>
         </div>
@@ -1758,11 +1774,13 @@ function drawBuild(){
       </div>
       <p class="buildnote">Pick anyone eligible for Egypt — dual or single nationality, at home or abroad.
         Tap a slot to choose. Your team lives in this browser and in the share link; no account needed.</p>
+      ${squadsHTML()}
     </div>
     <div class="pickwrap" id="pickwrap" hidden></div>`;
 
   $("bform").onchange=e=>{ reflowForm(e.target.value); B.pickSlot=null; drawBuild(); };
   const sh=$("bshare"); if(sh)sh.onclick=shareBuild;
+  const sv=$("bsave"); if(sv)sv.onclick=saveSquad;
   const cl=$("bclear"); if(cl)cl.onclick=()=>{
     B.xi={}; B.pickSlot=null; buildSave();
     history.replaceState(null,"",location.pathname); drawBuild();
@@ -1773,7 +1791,81 @@ function drawBuild(){
     }
     B.pickSlot=+b.dataset.slot; drawBuild(); openPicker();
   });
+  wireSquads();
   if(B.pickSlot!=null)openPicker();
+}
+
+// The saved-squads strip below the pitch. Three states, all honest about what an
+// account buys: signed out, an invitation to sign in (the game still works, this
+// only adds keeping); signed in with none, a gentle prompt; signed in with some,
+// the collection — each row loads onto the pitch or deletes.
+function squadsHTML(){
+  if(typeof Auth==="undefined"||!Auth.user){
+    return `<div class="squads">
+      <div class="sqhead">Your saved squads</div>
+      <p class="sqnote">Your team is kept in this browser and in the share link already.
+        <button class="linklike" id="sqsignin">Sign in</button> to keep a collection of named
+        squads that follows you to any device.</p></div>`;
+  }
+  if(B.saved==null)return `<div class="squads"><div class="sqhead">Your saved squads</div>
+    <p class="sqnote">Loading…</p></div>`;
+  if(!B.saved.length)return `<div class="squads"><div class="sqhead">Your saved squads</div>
+    <p class="sqnote">None yet. Build an XI and press <b>Save squad</b> to keep it here.</p></div>`;
+  const rows=B.saved.map(s=>{
+    const f=FORMS[s.formation], nm=f?f.name:s.formation;
+    const n=f?Object.keys(s.xi||{}).filter(k=>s.xi[k]).length:0;
+    return `<div class="sqrow" data-load="${s.id}">
+      <span class="sqname"><b>${esc(s.name)}</b><small>${esc(nm)} · ${n}/${f?f.slots.length:11}</small></span>
+      <button class="sqdel" data-del="${s.id}" title="Delete">×</button></div>`;
+  }).join("");
+  return `<div class="squads"><div class="sqhead">Your saved squads <span class="sqn">${B.saved.length}</span></div>
+    <div class="sqlist">${rows}</div></div>`;
+}
+function wireSquads(){
+  const si=$("sqsignin"); if(si)si.onclick=()=>authOpen("signin");
+  document.querySelectorAll("[data-load]").forEach(r=>r.onclick=e=>{
+    if(e.target.dataset.del!=null)return; // the × handles itself
+    const s=(B.saved||[]).find(x=>String(x.id)===r.dataset.load);
+    if(!s)return;
+    if(FORMS[s.formation])B.form=s.formation;
+    // Copy the picks, keeping only ids the registry still has, so a squad saved
+    // before a player left does not put a blank on the pitch.
+    const known=new Set(DATA.map(p=>p.tm_id)), xi={};
+    Object.entries(s.xi||{}).forEach(([k,id])=>{ if(id&&known.has(id))xi[k]=id; });
+    B.xi=xi; B.pickSlot=null; buildSave();
+    history.replaceState(null,"",buildHash());
+    drawBuild();
+  });
+  document.querySelectorAll("[data-del]").forEach(b=>b.onclick=async e=>{
+    e.stopPropagation();
+    const id=b.dataset.del;
+    b.disabled=true;
+    try{ await Auth.deleteSquad(id); B.saved=(B.saved||[]).filter(x=>String(x.id)!==String(id)); }
+    catch(_){ b.disabled=false; return; }
+    drawBuild();
+  });
+}
+// Save the current pitch as a named squad. Names it for the reader with a sensible
+// default (the formation + a number) so saving is one click, but lets them rename.
+async function saveSquad(){
+  if(typeof Auth==="undefined"||!Auth.user){ authOpen("signin"); return; }
+  const filled=FORMS[B.form].slots.filter((_,i)=>B.xi[i]).length;
+  if(!filled)return;
+  const dflt=FORMS[B.form].name+" XI"+((B.saved&&B.saved.length)?" "+(B.saved.length+1):"");
+  const name=(prompt("Name this squad:",dflt)||"").trim();
+  if(!name)return;
+  const btn=$("bsave"); if(btn){btn.disabled=true;btn.textContent="Saving…";}
+  try{
+    const row=await Auth.saveSquad(name,B.form,B.xi);
+    // saveSquad returns the inserted row(s); prepend so it shows at the top.
+    const rec=Array.isArray(row)?row[0]:row;
+    B.saved=[rec,...(B.saved||[])];
+  }catch(err){
+    if(btn){btn.disabled=false;btn.textContent="Save squad";}
+    alert(err&&err.message?err.message:"Could not save the squad.");
+    return;
+  }
+  drawBuild();
 }
 
 // The slot picker: every player who fits the chosen slot's role, searchable,
@@ -1942,6 +2034,10 @@ function authOpen(mode){
     // sign-in. Leaving it would show one person's saved players to whoever uses
     // this browser next.
     SHORT=new Set(); SHARED.clear(); listSet(SHORT);
+    // The saved squads belong to the account that just left, exactly like the
+    // shortlist. Drop them from memory so the next person on this browser does not
+    // see them; the server keeps them for the next sign-in.
+    B.saved=null;
     S.onlySaved=false;
     if(S.view==="mine")S.view="roster";
     drawAccount(); draw();
@@ -1971,6 +2067,11 @@ async function afterSignIn(){
     }
   }catch(_){ /* offline: keep the cached list and try again next sign-in */ }
   SHARED.clear();
+  // Pull the reader's saved squads too, so the Build view shows their collection
+  // the moment they land on it. Not awaited into the first paint elsewhere, but
+  // here we are already post-sign-in, so it is cheap and makes the list appear
+  // without a manual refresh.
+  await loadSquads();
   drawAccount();
   draw();
 }

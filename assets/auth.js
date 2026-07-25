@@ -191,6 +191,27 @@ const Auth = {
     if (!this.user) return;
     await this.call(`/rest/v1/note?id=eq.${id}`, { method: "DELETE", prefer: "return=minimal" });
   },
+
+  /* ---------- saved squads (Build XI) ----------
+     A saved squad is one row: a name, a formation and the eleven picks as jsonb.
+     The game works without any of this; these only add a kept collection for a
+     signed-in reader, exactly as notes do. */
+  async squads() {
+    if (!this.user) return [];
+    return await this.call(
+      "/rest/v1/squad?select=id,name,formation,xi,updated_at&order=updated_at.desc");
+  },
+  async saveSquad(name, formation, xi) {
+    if (!this.user) throw new Error("Sign in to save a squad.");
+    return await this.call("/rest/v1/squad", {
+      method: "POST", body: { user_id: this.user.id, name, formation, xi },
+      prefer: "return=representation",
+    });
+  },
+  async deleteSquad(id) {
+    if (!this.user) return;
+    await this.call(`/rest/v1/squad?id=eq.${id}`, { method: "DELETE", prefer: "return=minimal" });
+  },
 };
 
 /* ---------------------------------------------------------------------------
