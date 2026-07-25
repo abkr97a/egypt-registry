@@ -1705,6 +1705,12 @@ function drawBuild(){
   const value=form.slots.reduce((s,_,i)=>{
     const p=B.xi[i]&&byId(B.xi[i]); return s+(p?num(p.market_value_eur):0);
   },0);
+  // Average age over the players actually picked -- and only those with a known
+  // age, so a blank age string does not drag the mean toward zero. Shown as one
+  // decimal, the way a squad's average age is usually quoted.
+  const ages=form.slots.map((_,i)=>B.xi[i]&&byId(B.xi[i])).filter(Boolean)
+    .map(p=>num(p.age)).filter(a=>a>0);
+  const avgAge=ages.length?(ages.reduce((a,b)=>a+b,0)/ages.length):0;
   $("count").innerHTML=`${filled}<small>of ${total} picked</small>`;
 
   const opts=Object.entries(FORMS).map(([k,f])=>
@@ -1737,6 +1743,7 @@ function drawBuild(){
         <label class="bfield">Formation
           <select id="bform">${opts}</select></label>
         <div class="bstat"><span>Squad value</span><b>${valStr}</b></div>
+        <div class="bstat"><span>Avg age</span><b>${avgAge?avgAge.toFixed(1):"—"}</b></div>
         <div class="bstat"><span>Picked</span><b>${filled} / ${total}</b></div>
         <div class="bactions">
           <button class="bbtn" id="bshare"${filled?"":" disabled"}>Share XI</button>
