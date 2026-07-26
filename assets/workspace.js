@@ -1005,8 +1005,10 @@ function drawNav(){
   // the toggle.
   const pool=S.onlySaved?DATA.filter(isSaved):DATA;
   const n=pool.length;
-  // Same rule the view applies, or the tab promises a row it will not draw.
-  const withFix=pool.filter(p=>NEXTM[p.tm_id]&&!isFree(p)).length;
+  // Same rule the view applies, or the tab promises a row it will not draw --
+  // including the past-kickoff filter, so a played-but-not-yet-refreshed fixture
+  // is not counted here while the view correctly hides it.
+  const withFix=pool.filter(p=>NEXTM[p.tm_id]&&fixtureUpcoming(NEXTM[p.tm_id])&&!isFree(p)).length;
   const withMatch=pool.filter(p=>{const s=status(p);return s&&s.n;}).length;
   // caps().total, not natl.length: four players are capped per their profile with
   // no match list published, and counting rows alone dropped them from a view
@@ -1230,13 +1232,29 @@ function agendaHTML(list){
   }).join("");
 }
 
+// A fixture is only "upcoming" while its kickoff is not well in the past. The
+// fixture feed is scraped point-in-time: the moment a match is played it should be
+// replaced by the next one, but between refreshes a played game lingers in
+// nextm.json and would otherwise show as still-to-come (Aboukoura's Jul 25 win at
+// Indy Eleven kept showing as an upcoming fixture the day after he had played it).
+// So drop any fixture whose kickoff is more than a few hours past — the grace
+// window keeps a live or just-finished match visible rather than vanishing
+// mid-game. No utc (older scrape) => keep it, since we cannot judge it.
+const FIXTURE_GRACE_MS=4*60*60*1000; // 4h after kickoff it is no longer "next"
+function fixtureUpcoming(f){
+  if(!f)return false;
+  if(!f.utc)return true;
+  const t=Date.parse(f.utc);
+  if(isNaN(t))return true;
+  return t>=Date.now()-FIXTURE_GRACE_MS;
+}
 function drawFixtures(){
   // A free agent has no next match. The fixture stored against him belongs to
   // the club he LEFT -- Adam Tolba was listed as away at Holzheimer SG on 15 Aug
   // while being a free agent, which is his old side's fixture and tells a scout
   // nothing about him. isFree, not club_id 515, because the placeholder is only
   // one of the ways TM renders clublessness.
-  const all=rows().filter(p=>NEXTM[p.tm_id]&&!isFree(p));
+  const all=rows().filter(p=>NEXTM[p.tm_id]&&fixtureUpcoming(NEXTM[p.tm_id])&&!isFree(p));
   const egy=all.filter(p=>basedOf(p)==="egypt");
   let list=all.filter(p=>basedOf(p)==="abroad");
   const nEgyClubs=new Set(egy.map(p=>p.club)).size;
