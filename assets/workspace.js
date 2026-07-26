@@ -1076,7 +1076,13 @@ function drawNav(){
 // the only sort this view is really for: a scout plans a week, and the question
 // is "who plays next", not "who is called A".
 const FXKEY={
-  date:p=>{const d=Date.parse((NEXTM[p.tm_id]||{}).date||"");return isNaN(d)?8.64e15:d;},
+  // Sort by the real kickoff INSTANT (utc), not the scraped US-Eastern date. A
+  // 2am-Cairo match is stored as the previous Eastern day, so date-only sorting put
+  // it a day too early and out of step with the Cairo date now shown. utc orders it
+  // correctly and to the minute. f.date is the fallback only when there is no utc.
+  date:p=>{const f=NEXTM[p.tm_id]||{};
+    const t=f.utc?Date.parse(f.utc):Date.parse(f.date||"");
+    return isNaN(t)?8.64e15:t;},
   name:p=>(p.name||"").toLowerCase(),
   club:p=>(p.club||"").toLowerCase(),
   opp: p=>((NEXTM[p.tm_id]||{}).opp||"").toLowerCase(),
@@ -1149,6 +1155,19 @@ const koTime=f=>{
   const d=new Date(f.utc);
   return isNaN(d)?"":d.toLocaleTimeString("en-GB",
     {timeZone:CAIRO,hour:"2-digit",minute:"2-digit",hour12:false});
+};
+// The kickoff DATE in Cairo, for display beside koTime. f.date is scraped from
+// transfermarkt.us and is therefore the US-Eastern calendar day: a 7pm Eastern
+// kickoff is already 2am the NEXT day in Cairo, so showing f.date ("Jul 25")
+// beside a Cairo time ("02:00") put the fixture on the wrong day. Derive the date
+// from the same utc instant the time comes from, so date and time always agree.
+// f.date remains the fallback only when there is no utc (an older scrape).
+const koDate=f=>{
+  if(!f)return "—";
+  if(f.utc){const d=new Date(f.utc);
+    if(!isNaN(d))return esc(d.toLocaleDateString("en-GB",
+      {timeZone:CAIRO,day:"numeric",month:"short",year:"numeric"}));}
+  return esc(f.date||"—");
 };
 // The Cairo calendar date. A late kickoff can land on a different DAY in Cairo
 // than at the venue, so grouping must use the same zone the times are shown in
@@ -1294,7 +1313,7 @@ function drawFixtures(){
       <td><span class="who">${p.photo?`<img class="face" src="${esc(p.photo)}" alt="" loading="lazy">`
         :`<span class="face ini">${esc(initials(p.name))}</span>`}<span class="nm"><b>${esc(p.name)}</b>
         <span>${ownc}${esc(p.club||"")}${p.plays_in?` · ${esc(p.plays_in)}`:""}</span></span></span></td>
-      <td class="hide-s"><b>${esc(f.date||"—")}</b><small class="cn">${koTime(f)}</small></td>
+      <td class="hide-s"><b>${koDate(f)}</b><small class="cn">${koTime(f)}</small></td>
       <td>${f.ha==="H"?'<span class="tag">Home</span>':f.ha==="A"?'<span class="tag">Away</span>':""} ${crest}${esc(f.opp||"—")}
         ${f.comp?`<small class="cn">${esc(f.comp)}</small>`:""}</td>
       <td class="hide-s">${strip}</td>
