@@ -2,7 +2,7 @@
    Table-first, filters persistent, detail in a side panel so a scout working
    through 152 players never loses their place in the list. */
 
-let DATA=[],MSTATS={},CRESTS={},NEXTM={},NATIDS={},NATFIX={};
+let DATA=[],MSTATS={},CRESTS={},NEXTM={},NATIDS={},NATFIX={},SOFA={};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const initials=n=>(n||"?").split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase();
@@ -685,6 +685,29 @@ function trBlock(p){
       <td class="r">${fee&&fee!=="-"&&fee!=="?"?`<span class="fee${free?" f":""}">${esc(fee)}</span>`:""}</td>
     </tr>`;}).join("")}</table>`;
 }
+// SofaScore match rating — the one performance number this platform's own source
+// (Transfermarkt) does not carry. Shown only for the ~128 players we could match
+// confidently and who have rated matches; everyone else gets nothing, because a
+// blank is honest and an invented rating is not. A rating band colours it the way
+// SofaScore itself does: 7.0+ good, 6.5-7 average, below muted.
+function sofaBand(r){ return r>=7.5?"hi":r>=7?"good":r>=6.5?"mid":"low"; }
+function sofaBlock(p){
+  const s=SOFA[p.tm_id];
+  if(!s||!s.n)return "";
+  const last=(s.last||[]).slice(0,6).map(x=>
+    `<span class="sofapill ${sofaBand(x.r)}" title="${esc((x.h||"")+" v "+(x.a||""))}">${x.r.toFixed(1)}</span>`
+  ).join("");
+  return `<div class="psec">Match rating <span class="sofasrc">SofaScore</span></div>
+    <div class="sofawrap">
+      <div class="sofaavg ${sofaBand(s.avg)}">
+        <b>${s.avg.toFixed(2)}</b><span>avg · last ${s.n}</span>
+      </div>
+      <div class="sofalast">
+        <div class="sofalabel">Recent matches</div>
+        <div class="sofastrip">${last}</div>
+      </div>
+    </div>`;
+}
 // Every international appearance, grouped by the side he played for. This is the
 // evidence behind the caps column: a scout who sees 0/26 needs to be able to
 // check it rather than take the number on trust.
@@ -961,6 +984,7 @@ function openPanel(id){
     <div class="pbody">
       ${dk||`<div class="kpis">${kpi(st.a||0,"apps")}${kpi(st.g||0,"goals")}${kpi(st.as||0,"assists")}${kpi(mins+"","90s")}</div>`}
       ${dnote}
+      ${sofaBlock(p)}
       <!-- Notes first. They are what a returning scout opens this panel for; the
            career data is always there and never changes on a visit. -->
       <div id="notes"></div>
@@ -2255,8 +2279,8 @@ function drawAccount(){
 
 async function boot(){
   const load=n=>fetch(`data/${n}.json`).then(r=>r.json()).catch(()=>({}));
-  [DATA,MSTATS,CRESTS,NEXTM,NATIDS,NATFIX]=await Promise.all(
-    ["data","mstats","crests","nextm","natids","natfix"].map(load));
+  [DATA,MSTATS,CRESTS,NEXTM,NATIDS,NATFIX,SOFA]=await Promise.all(
+    ["data","mstats","crests","nextm","natids","natfix","sofa"].map(load));
   // Copied from the dossier, where hiding a cap-tied player is right: that site
   // lists who Egypt can still sign. Here it is wrong. This registry answers "who
   // is out there at all", and a player cap-tied to Qatar is still an Egyptian

@@ -791,6 +791,29 @@ td.sides>.sidesw{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
   border-bottom:1px solid var(--line);font-size:13px}
 .prow:last-child{border-bottom:0}
 .prow span{color:var(--mut)}
+
+/* SofaScore match rating. A big banded average beside a strip of recent
+   per-match ratings — the one performance number TM does not give. Bands echo
+   SofaScore's own colouring: 7.5+ strong green, 7+ green, 6.5+ amber, below grey. */
+.psec .sofasrc{color:var(--mut);letter-spacing:.02em;font-weight:600;text-transform:none;font-size:9px}
+.sofawrap{display:flex;gap:14px;align-items:stretch;margin-bottom:4px}
+.sofaavg{flex:none;width:96px;border-radius:11px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;padding:12px 6px;border:1px solid var(--line)}
+.sofaavg b{font:900 30px/1 var(--sans);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.sofaavg span{font:700 9px/1.2 var(--sans);letter-spacing:.06em;text-transform:uppercase;
+  color:var(--mut);margin-top:6px;text-align:center}
+.sofalast{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center}
+.sofalabel{font:700 9px/1 var(--sans);letter-spacing:.12em;text-transform:uppercase;
+  color:var(--mut);margin-bottom:9px}
+.sofastrip{display:flex;flex-wrap:wrap;gap:6px}
+.sofapill{font:800 12.5px/1 var(--mono);font-variant-numeric:tabular-nums;
+  padding:6px 8px;border-radius:7px;cursor:help}
+/* band colours — same tokens the form strip uses, so the panel reads as one system */
+.sofaavg.hi,.sofapill.hi{background:rgba(46,163,106,.20);color:var(--up)}
+.sofaavg.good,.sofapill.good{background:rgba(46,163,106,.13);color:var(--up)}
+.sofaavg.mid,.sofapill.mid{background:rgba(217,154,43,.16);color:var(--warn)}
+.sofaavg.low,.sofapill.low{background:var(--raised);color:var(--ink-2)}
+:root[data-theme="light"] .sofaavg.hi b{color:var(--up)}
 .prow b{font-weight:600;text-align:right}
 
 .mtable{width:100%;border-collapse:collapse;font-size:12.5px}
