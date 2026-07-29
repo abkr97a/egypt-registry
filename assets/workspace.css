@@ -313,6 +313,8 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;min-width:940px}
 .natfxscore.w{background:rgba(46,163,106,.15);color:var(--up)}
 .natfxscore.d{background:rgba(217,154,43,.16);color:var(--warn)}
 .natfxscore.l{background:rgba(196,72,95,.15);color:var(--down)}
+/* Played, result not yet on TM — neutral, not a win/draw/loss colour. */
+.natfxscore.pending{background:var(--raised);color:var(--mut);font-size:10px;letter-spacing:.06em}
 .natfxtime{flex:none;font:800 12.5px/1 var(--sans);color:var(--red);
   font-variant-numeric:tabular-nums;padding:5px 8px;border-radius:7px;
   background:rgba(210,30,60,.1)}

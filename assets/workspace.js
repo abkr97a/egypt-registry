@@ -1489,10 +1489,14 @@ function natMatchRow(f,past){
   }
   const venue=f.ha==="H"?"H":f.ha==="A"?"A":"";
   const venueTitle=f.ha==="H"?"Home":f.ha==="A"?"Away":"";
-  // Right side: a coloured result pill for past games, the kickoff time for
-  // upcoming ones. One column, so the rows line up whichever they are.
-  const right=past&&f.score
-    ? `<span class="natfxscore ${natOutcome(f.score)}" title="Egypt ${esc(f.score.replace(':','–'))}">${esc(f.score)}</span>`
+  // Right side: a coloured result pill for a past game with a score; the kickoff
+  // time for a genuine upcoming one; and, for a match that has been played but has
+  // no result yet (TM's lag on lower-profile games), a neutral "FT" so it never
+  // shows a kickoff time on a game already in the past.
+  const right=past
+    ? (f.score
+        ? `<span class="natfxscore ${natOutcome(f.score)}" title="Egypt ${esc(f.score.replace(':','–'))}">${esc(f.score)}</span>`
+        : `<span class="natfxscore pending" title="Played — result not published yet">FT</span>`)
     : clock?`<span class="natfxtime">${esc(clock)}</span>`:"";
   return `<div class="natfxrow${past?" past":""}">
     ${venue?`<span class="natfxven ${venue==="H"?"h":"a"}" title="${venueTitle}">${venue}</span>`:`<span class="natfxven none"></span>`}
@@ -1510,7 +1514,20 @@ function drawNatFixtures(){
     $("body").innerHTML=`<div class="empty"><b>No national-team fixtures yet</b>Egypt's schedule has not been published. Check back when the next international window is announced.</div>`;
     return;
   }
-  const anyUpcoming=teams.some(t=>(t.upcoming||[]).length);
+  // A national fixture scraped as "upcoming" whose kickoff has passed is a match
+  // that has been played but not yet given a result on Transfermarkt (TM lags a day
+  // or two on lower-profile games). It must NOT keep showing as upcoming — Egypt
+  // U20 v Jordan sat as "Upcoming" the day after it was played. Split each team's
+  // upcoming into genuinely-future fixtures and ones that have slipped into the
+  // past; the latter fold into the recent-results run so the card stays truthful.
+  const splitTeam=t=>{
+    const future=[], slipped=[];
+    (t.upcoming||[]).forEach(f=>(fixtureUpcoming(f)?future:slipped).push(f));
+    // slipped games are newest-first alongside the real recent results
+    const rec=[...slipped, ...(t.recent||[])];
+    return {future, rec};
+  };
+  const anyUpcoming=teams.some(t=>splitTeam(t).future.length);
   const sub=anyUpcoming
     ? "Egypt's national sides — senior and youth. Recent results and the next scheduled matches for each."
     : "No fixtures are scheduled right now — normal between international windows. Recent results are shown for each side until the next window is announced.";
@@ -1519,8 +1536,9 @@ function drawNatFixtures(){
   // newest-first. A subheading marks the two runs so a result and a fixture are
   // never mistaken for one another.
   const blocks=teams.map(t=>{
-    const up=(t.upcoming||[]).slice(0,5);
-    const rec=(t.recent||[]).slice(0,5);
+    const s=splitTeam(t);
+    const up=s.future.slice(0,5);
+    const rec=s.rec.slice(0,5);
     const crest=CRESTS[t.sid]?`<img class="cc" src="${esc(CRESTS[t.sid])}" alt="" loading="lazy">`:"";
     const upHTML=up.length
       ? `<div class="natfxsub up">Upcoming</div><div class="natfxruns">${up.map(f=>natMatchRow(f,false)).join("")}</div>`
