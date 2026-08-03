@@ -1002,7 +1002,7 @@ function openPanel(id){
       <div class="prow"><span>Market value</span><b>${esc(p.mv_now||"—")}</b></div>
       <div class="prow"><span>National team</span><b>${esc(p.national_team||"not called up")}${p.caps&&p.caps!=="0"?" · "+esc(p.caps)+" caps":""}</b></div>
       ${nx?`<div class="psec">Next match</div>
-        <div class="prow"><span>${esc(nx.date||"")}${nx.time?" "+esc(nx.time):""}</span><b>${esc(nx.opp||"")}</b></div>`:""}
+        <div class="prow"><span>${koDate(nx)}${koTime(nx)?" "+esc(koTime(nx)):""}</span><b>${esc(nx.opp||"")}</b></div>`:""}
       ${form?`<div class="psec">Recent club matches</div><table class="mtable">${form}</table>`:""}
       ${traj}
       ${natBlock(p)}
