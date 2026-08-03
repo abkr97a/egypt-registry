@@ -975,7 +975,15 @@ function openPanel(id){
     </tr>`;
   }).join("");
 
-  const nx=NEXTM[id];
+  // Only show a NEXT MATCH that is genuinely still to come. nextm.json is a
+  // point-in-time scrape and a played game lingers in it until the next refresh —
+  // so the panel showed Omar El Sawy's "next match" as the FC Botosani game he had
+  // already played (it sat in Recent club matches, 1-1, right below). The Upcoming
+  // fixtures view already gates on fixtureUpcoming(); the panel must too, or the two
+  // disagree about the same fixture. A free agent's inherited former-club fixture is
+  // never his, either.
+  const nxRaw=NEXTM[id];
+  const nx=(nxRaw&&fixtureUpcoming(nxRaw)&&!isFree(p))?nxRaw:null;
   $("panel").innerHTML=`
     <div class="phead">${face}
       <div><h2>${esc(p.name)}</h2>
